@@ -1,3 +1,7 @@
+UNTESTED MECHANICS:
+- Gagging the script and whisper outputs that are required to sync both players.
+- Have not played a full game using slates, need slates to test.
+
 HOW TO PLAY:
 * Run battle.cmd in Genie (if you already have a script named battle.cmd you can rename it to battlesiege.cmd or whatever you like)
 * Resize the window that pops up so that its height is double what you see of the blank playing board.
