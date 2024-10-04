@@ -3,7 +3,7 @@
 # Window Title
 var WINDOW BattleSiege!
 # Compact Display = 0 or 1
-var COMPACT 0
+var COMPACT 1
 # If your character is mute you can use slates to play! Set to 1 to use a slate.
 var USE_SLATE 0
 # Gag whispering game info for more immersive playing = 0 or 1
@@ -150,7 +150,7 @@ matchre WRITE_SLATE ^You rub .* slate clean
 matchwait 2
 goto CLEAN_SLATE
 
-WRITE_SLATE
+WRITE_SLATE:
 pause 0.2
 put write %TILE
 matchre WRITE_SLATE ^\.\.\.wait|^Sorry\,|^You are still stunned
