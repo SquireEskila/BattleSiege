@@ -37,6 +37,7 @@ var TRAP <>
 
 ##################
 
+put #class BattleSiege true
 var BattleSiege NewGame
 var COLUMNS A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
 eval RIGHT_EDGE element ("0|%COLUMNS","%GRID_MAX")
@@ -97,7 +98,11 @@ if %GAME_SETUP = 1 then goto GAME_SETUP_LOOP
 if %GAG_WHISPERS = 1 then put #ungag %OUTPUT_GAG
 if ("%P|%W|%E|%R|%T" = "0|0|0|0|0") then gosub YOU_LOSE
 if ("%EP|%EW|%EE|%ER|%ET" = "0|0|0|0|0") then gosub YOU_WIN
-if %GAME_WON != 0 then exit
+if %GAME_WON != 0 then 
+    {
+    put #class BattleSiege false
+    exit
+    }
 if !matchre ("%STRIKE","^0$") then goto ENEMY_STRIKES
 if !matchre ("%INFO","^0$") then goto INFO_ON_MY_STRIKE
 matchre STRIKE_AT_ENEMY ^SELECT_
