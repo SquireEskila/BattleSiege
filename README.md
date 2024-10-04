@@ -20,6 +20,9 @@ HOW TO PLAY:
 * A valid move is a number and a letter within the playing field's boundaries, in either order: E4 or 4E will both trigger.
   
 RULES OF THE GAME:
+
 It's pretty much just like Battleship!
+
 Each player takes a turn calling out their moves. The script is not set up to enforce a turn order.
+
 When a player's five main pieces are taken out, the game is over! The mana trap tile is not needed to be found to finish a game.
