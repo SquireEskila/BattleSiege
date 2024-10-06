@@ -10,7 +10,8 @@ var USE_SLATE 0
 var GAG_WHISPERS 0
 # Some fun colors! Set COLOR to 0 to use only the default color.
 var DEFAULT_COLOR WhiteSmoke
-var COLOR 1
+# Options: ORANGE, PINK, GREEN, BLUE--must be in caps!
+var COLOR BLUE
 # How do links look? Use two characters.
 var TILE_BUTTON ##
 # Maximum grid size is 26
@@ -52,7 +53,7 @@ BORDER_ACROSS_LOOP:
 var BA %BA%BT
 math LOOP add 1
 if %LOOP < %GRID_MAX then goto BORDER_ACROSS_LOOP
-if %COLOR = 1 then gosub FUN_COLORS
+if %COLOR != 0 then gosub %COLOR_COLORS
 else gosub NO_COLORS
 
 action var TILE $1 when ^SELECT_(.*)$
@@ -78,6 +79,7 @@ var EMPATH_SET 0
 var RANGER_SET 0
 var THIEF_SET 0
 var TRAP_SET 0
+var TRAP2_SET 0
 var ENEMY_SET 0
 var PIECE PALADIN
 var LOOP 1
@@ -370,6 +372,7 @@ goto REDRAW_DISPLAY
 
 PIECE_INFO:
 if %ENEMY_SET = 0 then var PIECE ENEMY
+if %TRAP2_SET = 0 then var PIECE TRAP2
 if %TRAP_SET = 0 then var PIECE TRAP
 if %THIEF_SET = 0 then var PIECE THIEF
 if %RANGER_SET = 0 then var PIECE RANGER
@@ -423,7 +426,15 @@ if %PIECE = THIEF then
     }
 if %PIECE = TRAP then
     {
-    put #echo >%WINDOW mono "Select the tile to lay your Mana Trap:"
+    put #echo >%WINDOW mono "Select the tile to lay your first Mana Trap:"
+    put #echo >%WINDOW mono "   ^   "
+    put #echo >%WINDOW mono " < # > "
+    put #echo >%WINDOW mono "   v   "
+    put #echo >%WINDOW mono "(The trap is a single-tile which reveals adjacent tiles when hit.)"
+    }
+if %PIECE = TRAP2 then
+    {
+    put #echo >%WINDOW mono "Select the tile to lay your second Mana Trap:"
     put #echo >%WINDOW mono "   ^   "
     put #echo >%WINDOW mono " < # > "
     put #echo >%WINDOW mono "   v   "
@@ -495,6 +506,7 @@ eval TILE_NUMBER replacere ("%TILE","[A-Z]","")
 if %PIECE = WARMAGE then goto PLACE_WARMAGE
 if %PIECE = EMPATH then goto PLACE_EMPATH
 if %PIECE = TRAP then goto PLACE_TRAP
+if %PIECE = TRAP2 then goto PLACE_TRAP2
 if %ORIENT = 1 then goto GAME_SETUP_LOOP
 put #echo >%WINDOW mono "This text should never display."
 goto REDRAW_DISPLAY
@@ -657,6 +669,11 @@ goto REDRAW_DISPLAY
 PLACE_TRAP:
 var %TILE %TRAP
 var TRAP_SET 1
+goto REDRAW_DISPLAY
+
+PLACE_TRAP2:
+var %TILE %TRAP
+var TRAP2_SET 1
 var LOOP 1
 gosub SETVARS_CLEAR
 goto REDRAW_DISPLAY
@@ -795,7 +812,7 @@ var LOOP 1
 goto SAVE_GAME_OUTER_LOOP
 
 SAVE_GAME_PRESET:
-var SAVE %RIGHT_EDGE|%GRID_MAX|%PALADIN_SET|%WARMAGE_SET|%EMPATH_SET|%RANGER_SET|%THIEF_SET
+var SAVE %RIGHT_EDGE|%GRID_MAX|%PALADIN_SET|%WARMAGE_SET|%EMPATH_SET|%RANGER_SET|%THIEF_SET|%TRAP_SET|%TRAP2_SET
 var ECHO_2 Preset game saved!
 var FILL Preset
 var LOOP 1
@@ -874,9 +891,10 @@ eval EMPATH_SET element ("%LOAD","4")
 eval RANGER_SET element ("%LOAD","5")
 eval THIEF_SET element ("%LOAD","6")
 eval TRAP_SET element ("%LOAD","7")
+eval TRAP2_SET element ("%LOAD","8")
 eval COL_LOOP count ("%LOAD","|")
-if %COL_LOOP = 7 then goto REDRAW_DISPLAY
-var LOOP 7
+if %COL_LOOP = 8 then goto REDRAW_DISPLAY
+var LOOP 8
 
 LOAD_GAME_LOOP:
 eval TILE element ("%LOAD","%LOOP")
@@ -952,7 +970,7 @@ var GAME_WON 2
 return
 
 
-FUN_COLORS:
+PINK_COLORS:
  var CL1 #ff8fbe
  var CL2 #fe89be
  var CL3 #fc83be
@@ -980,6 +998,96 @@ var CL24 #802bf4
 var CL25 #712bf8
 var CL26 #602dfb
 var CL27 #4a2eff
+return
+
+BLUE_COLORS:
+ var CL1 #6edafc
+ var CL2 #60d4fc
+ var CL3 #52cffc
+ var CL4 #42c9fc
+ var CL5 #30c3fc
+ var CL6 #14bdfc
+ var CL7 #00b7fc
+ var CL8 #00b1fc
+ var CL9 #00abfc
+var CL10 #00a4fb
+var CL11 #009ef7
+var CL12 #0098f3
+var CL13 #0092ef
+var CL14 #008ceb
+var CL15 #0085e8
+var CL16 #007fe5
+var CL17 #0079e3
+var CL18 #0072e1
+var CL19 #006be1
+var CL20 #0062e3
+var CL21 #0058e8
+var CL22 #004fe4
+var CL23 #0847df
+var CL24 #223dda
+var CL25 #3133d4
+var CL26 #3c27ce
+var CL27 #4516c7
+return
+
+GREEN_COLORS:
+ var CL1 #61ffbd
+ var CL2 #61fbb7
+ var CL3 #62f8b1
+ var CL4 #63f4ab
+ var CL5 #63f0a5
+ var CL6 #64ed9f
+ var CL7 #64e999
+ var CL8 #65e594
+ var CL9 #65e28e
+var CL10 #66de88
+var CL11 #67da82
+var CL12 #67d67d
+var CL13 #68d377
+var CL14 #68cf72
+var CL15 #69cb6c
+var CL16 #69c867
+var CL17 #6ac462
+var CL18 #6ac05c
+var CL19 #6abd57
+var CL20 #6bb952
+var CL21 #6bb54c
+var CL22 #6bb147
+var CL23 #6cae42
+var CL24 #6caa3d
+var CL25 #6ca638
+var CL26 #6ca332
+var CL27 #6c9f2d
+return
+
+ORANGE_COLORS:
+ var CL1 #ffb061
+ var CL2 #ffae5e
+ var CL3 #ffab5a
+ var CL4 #ffa957
+ var CL5 #ffa653
+ var CL6 #ffa450
+ var CL7 #fea14d
+ var CL8 #fe9f49
+ var CL9 #fe9c46
+var CL10 #fe9a43
+var CL11 #fe973f
+var CL12 #fe953c
+var CL13 #fe9239
+var CL14 #fe8f36
+var CL15 #fe8d32
+var CL16 #fe8a2f
+var CL17 #fe872b
+var CL18 #fe8428
+var CL19 #fe8224
+var CL20 #fd7f21
+var CL21 #fd7c1d
+var CL22 #fd7919
+var CL23 #fd7615
+var CL24 #fd7310
+var CL25 #fd700b
+var CL26 #fd6c05
+var CL27 #fd6900
 return
 
 NO_COLORS:
