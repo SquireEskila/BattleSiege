@@ -1,3 +1,6 @@
+HOW TO DOWNLOAD:
+* Click "battle.cmd" in the list above the readme, and in the right hand corner next to the word "Raw" is a button to download the raw file. Save to the Genie scripts folder!
+
 UNTESTED MECHANICS:
 - Gagging the script and whisper outputs that are required to sync both players.
 - Have not played a full game using slates, need slates to test.
