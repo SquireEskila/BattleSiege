@@ -53,6 +53,11 @@ BORDER_ACROSS_LOOP:
 var BA %BA%BT
 math LOOP add 1
 if %LOOP < %GRID_MAX then goto BORDER_ACROSS_LOOP
+if_1 then
+    {
+    eval 1 toupper ("%1")
+    if matchre ("%1","BLUE|GREEN|PINK|ORANGE") then var COLOR $0
+    }
 if %COLOR != 0 then gosub %COLOR_COLORS
 else gosub NO_COLORS
 
@@ -1061,33 +1066,33 @@ var CL27 #6c9f2d
 return
 
 ORANGE_COLORS:
- var CL1 #ffb061
- var CL2 #ffae5e
- var CL3 #ffab5a
- var CL4 #ffa957
- var CL5 #ffa653
- var CL6 #ffa450
- var CL7 #fea14d
- var CL8 #fe9f49
- var CL9 #fe9c46
-var CL10 #fe9a43
-var CL11 #fe973f
-var CL12 #fe953c
-var CL13 #fe9239
-var CL14 #fe8f36
-var CL15 #fe8d32
-var CL16 #fe8a2f
-var CL17 #fe872b
-var CL18 #fe8428
-var CL19 #fe8224
-var CL20 #fd7f21
-var CL21 #fd7c1d
-var CL22 #fd7919
-var CL23 #fd7615
-var CL24 #fd7310
-var CL25 #fd700b
-var CL26 #fd6c05
-var CL27 #fd6900
+ var CL1 #fcdd6e
+ var CL2 #fcd968
+ var CL3 #fcd462
+ var CL4 #fcd05c
+ var CL5 #fccb56
+ var CL6 #fcc750
+ var CL7 #fcc24b
+ var CL8 #fcbe45
+ var CL9 #fcb93f
+var CL10 #fcb43a
+var CL11 #fcaf35
+var CL12 #fdaa2f
+var CL13 #fda52a
+var CL14 #fda025
+var CL15 #fd9b20
+var CL16 #fd961b
+var CL17 #fe9016
+var CL18 #fe8a11
+var CL19 #fe850c
+var CL20 #fe7f07
+var CL21 #fe7903
+var CL22 #ff7200
+var CL23 #ff6c00
+var CL24 #ff6500
+var CL25 #ff5d00
+var CL26 #ff5600
+var CL27 #ff4d00
 return
 
 NO_COLORS:
