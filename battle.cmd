@@ -1,4 +1,4 @@
-### BattleSiege! Version 1.0 Coded by Eskila and Cryle ###
+### BattleSiege! Version 1.1 Coded by Eskila and Cryle ###
 
 # Window Title
 var WINDOW BattleSiege!
@@ -35,6 +35,7 @@ var EMPATH EE
 var RANGER RR
 var THIEF TT
 var TRAP <>
+var TRAP_SPENT ><
 
 ##################
 
@@ -275,7 +276,7 @@ if matchre ("%TILE","%THIEF") then gosub HIT_SCORE T
 if matchre ("%TILE","%BH") then var ECHO HIT
 if matchre ("%TILE","%TRAP") then var ECHO TRAP
 if matchre ("%ECHO","HIT|KILL") then var %VALIDSTRIKE %BH
-if matchre ("%ECHO","TRAP") then var %VALIDSTRIKE %TRAP
+if matchre ("%ECHO","TRAP") then var %VALIDSTRIKE %TRAP_SPENT
 if matchre ("%ECHO","MISS") then var %VALIDSTRIKE %BB
 return
 
