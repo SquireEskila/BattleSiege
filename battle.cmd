@@ -1,4 +1,4 @@
-### BattleSiege! Version 1.1 Coded by Eskila and Cryle ###
+### BattleSiege! Version 1.0 Coded by Eskila and Cryle ###
 
 # Window Title
 var WINDOW BattleSiege!
@@ -104,6 +104,8 @@ GAME_LOOP:
 gosub clear
 if %GAME_SETUP = 1 then goto GAME_SETUP_LOOP
 if %GAG_WHISPERS = 1 then put #ungag %OUTPUT_GAG
+if !matchre ("%STRIKE","^0$") then goto ENEMY_STRIKES
+if !matchre ("%INFO","^0$") then goto INFO_ON_MY_STRIKE
 if ("%P|%W|%E|%R|%T" = "0|0|0|0|0") then gosub YOU_LOSE
 if ("%EP|%EW|%EE|%ER|%ET" = "0|0|0|0|0") then gosub YOU_WIN
 if %GAME_WON != 0 then 
@@ -111,8 +113,6 @@ if %GAME_WON != 0 then
     put #class BattleSiege false
     exit
     }
-if !matchre ("%STRIKE","^0$") then goto ENEMY_STRIKES
-if !matchre ("%INFO","^0$") then goto INFO_ON_MY_STRIKE
 matchre STRIKE_AT_ENEMY ^SELECT_
 matchre REDRAW_DISPLAY ^REDRAW$
 matchre SAVE_GAME_ENEMY ^SAVE_GAME_ENEMY
@@ -133,6 +133,7 @@ matchre LOAD_GAME_ENEMY_LIST ^LOAD_GAME_ENEMY
 matchwait
 
 STRIKE_AT_ENEMY:
+math MYTURN add 1
 if %USE_SLATE = 1 then goto USE_SLATE
 pause 0.1
 put say }%ENEMY %TILE.
@@ -288,6 +289,7 @@ else var ECHO HIT
 return
 
 ENEMY_STRIKES:
+math ENEMYTURN add 1
 var VALIDSTRIKE %STRIKE
 var STRIKE 0
 if ("%VALIDSTRIKE" = "SLATE") then
@@ -322,6 +324,8 @@ goto WHISPER_ENEMY_STRIKES_WAIT
 
 START_GAME:
 var GAME_SETUP 0
+var ENEMYTURN 0
+var MYTURN 0
 action var STRIKE $2 when ^%ENEMY.*(says|asks|exclaims|yells|belts out).*\,\s\".*([A-Z]\d+|\d+[A-Z])
 action var STRIKE SLATE when ^%ENEMY shows you (his|her) slate
 action var SLATESTRIKE $1 when ^The slate reads\:.*([A-Z]\d+|\d+[A-Z])
@@ -765,6 +769,7 @@ if %COL_LOOP > %GRID_MAX then
         if %GAME_SETUP = 0 then 
             {
             put #echo >%WINDOW mono "   Health: P-%P   W-%W   E-%E   R-%R  T-%T"
+            put #echo >%WINDOW mono "   Turns: %MYTURN"
             put #echo >%WINDOW
             goto DISPLAY_ENEMY
             }
@@ -798,6 +803,7 @@ if %COL_LOOP > %GRID_MAX then
         put #echo >%WINDOW %CL%LOOP mono "%BC"
         put #echo >%WINDOW
         put #echo >%WINDOW mono "   Health: P-%EP   W-%EW   E-%EE   R-%ER   T-%ET"
+        put #echo >%WINDOW mono "   Turns: %ENEMYTURN"
         put #echo >%WINDOW
         return
         }
@@ -811,7 +817,7 @@ goto ECHO_ENEMY_LOOP
 
 
 SAVE_GAME_ENEMY:
-var SAVE %RIGHT_EDGE|%GRID_MAX|%P|%W|%E|%R|%T|%EP|%EW|%EE|%ER|%ET
+var SAVE %RIGHT_EDGE|%GRID_MAX|%P|%W|%E|%R|%T|%EP|%EW|%EE|%ER|%ET|%MYTURN|%ENEMYTURN
 var ECHO_2 Game versus %ENEMY saved!
 var FILL %ENEMY
 var LOOP 1
@@ -878,8 +884,10 @@ eval EW element ("%LOAD","8")
 eval EE element ("%LOAD","9")
 eval ER element ("%LOAD","10")
 eval ET element ("%LOAD","11")
+eval MYTURN element ("%LOAD","12")
+eval ENEMYTURN element ("%LOAD","13")
 eval COL_LOOP count ("%LOAD","|")
-var LOOP 11
+var LOOP 13
 goto LOAD_GAME_LOOP
 
 LOAD_GAME_PRESET:
@@ -966,12 +974,14 @@ goto SETVARS_LINKS_LOOP
 
 YOU_WIN:
 put #echo >%WINDOW lime mono "You won! A strategic mastermind!"
+put #echo >%WINDOW lime mono "Total Turns: %MYTURN! - %ENEMY's Total Turns: %ENEMYTURN!"
 var GAME_WON 1
 return
 
 YOU_LOSE:
 put #echo >%WINDOW pink mono "You lost! But the real treasure is..."
 put #echo >%WINDOW pink mono "...the mana traps we set off along the way!"
+put #echo >%WINDOW lime mono "Total Turns: %MYTURN! - %ENEMY's Total Turns: %ENEMYTURN!"
 var GAME_WON 2
 return
 
