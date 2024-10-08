@@ -3,10 +3,10 @@ These highlights use the default border and piece characters and will no longer 
 
 #highlight {regexp} {#FF8080} {\[(!!)\]} {BattleSiege}
 #highlight {regexp} {whitesmoke} {\[(vv)\]} {BattleSiege}
-#highlight {regexp} {#E8E273} {\[(PP)\]} {BattleSiege}
+#highlight {regexp} {#E3AE33} {\[(PP)\]} {BattleSiege}
 #highlight {regexp} {#FF3620} {\[(WW)\]} {BattleSiege}
-#highlight {regexp} {#aqua} {\[(EE)\]} {BattleSiege}
+#highlight {regexp} {aqua} {\[(EE)\]} {BattleSiege}
 #highlight {regexp} {#6BED7B} {\[(RR)\]} {BattleSiege}
 #highlight {regexp} {#8080FF} {\[(TT)\]} {BattleSiege}
-#highlight {regexp} {#0080FF} {\[(<>)\]} {BattleSiege}
+#highlight {regexp} {#F861F3} {\[(<>)\]} {BattleSiege}
 #highlight {regexp} {#AAAAAA} {\[(><)\]} {BattleSiege}
