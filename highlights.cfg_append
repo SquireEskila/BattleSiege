@@ -1,12 +1,14 @@
 Copy these lines to your Genie/Config/highlights.cfg file! 
 These highlights use the default border and piece characters and will no longer work if you change them in the game script.
 
-#highlight {regexp} {#FF8080} {\[(!!)\]} {BattleSiege}
+#highlight {regexp} {#FF4F4F} {\[(!!)\]} {BattleSiege}
 #highlight {regexp} {whitesmoke} {\[(vv)\]} {BattleSiege}
 #highlight {regexp} {#E3AE33} {\[(PP)\]} {BattleSiege}
 #highlight {regexp} {#FF3620} {\[(WW)\]} {BattleSiege}
 #highlight {regexp} {aqua} {\[(EE)\]} {BattleSiege}
 #highlight {regexp} {#6BED7B} {\[(RR)\]} {BattleSiege}
+#highlight {regexp} {#C5AEE3} {\[(MM)\]} {BattleSiege}
 #highlight {regexp} {#8080FF} {\[(TT)\]} {BattleSiege}
 #highlight {regexp} {#F861F3} {\[(<>)\]} {BattleSiege}
 #highlight {regexp} {#AAAAAA} {\[(><)\]} {BattleSiege}
+
