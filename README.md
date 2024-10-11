@@ -1,9 +1,19 @@
 HOW TO DOWNLOAD:
 * Click "battle.cmd" in the list above the readme, and in the right hand corner next to the word "Raw" is a button to download the raw file. Save to the Genie scripts folder!
+* "battle2.cmd" version adds moon mages and all pieces now have special abilities!
+
+SPECIAL ABILITIES:
+* PALADINS: Guild Piece Tiles next to a Paladin are protected until that Paladin tile is defeated.
+* WARMAGES: Upon death, War Mages will explode in the 4 corners around their piece.
+* EMPATHS: Once per game, your empath can sense the 8 tiles next to their original pieces. This also reveals the remaining Empath pieces to your opponent!
+* RANGERS: If there is room to dodge (the tile has not been struck yet and is considered empty; MISSED attacks are not empty!) the Ranger can dodge twice.
+* MOONMAGES: Have 5 charges of Locate, which reveals 2 random enemy tiles. They can also Backtrace after a Locate to immediately mark all 3 enemy Moon Mage tiles!
+* THIEVES: Upon death, Thieves will land a guaranteed hit on the nearest enemy tile to the east or south. This ability will wrap the playing field until an enemy tile is found or the Thief's own tile is reached from behind.
+* It has been my goal to make these abilities challenging and FUN in ways that promote emergent gameplay. If they are frustrating, please leave feedback!
 
 UNTESTED MECHANICS:
-- Gagging the script and whisper outputs that are required to sync both players.
-- Have not played a full game using slates, need slates to test.
+* Gagging the script and whisper outputs that are required to sync both players.
+* Have not played a full game using slates, need slates to test.
 
 HOW TO PLAY:
 * Run battle.cmd in Genie (if you already have a script named battle.cmd you can rename it to battlesiege.cmd or whatever you like)
