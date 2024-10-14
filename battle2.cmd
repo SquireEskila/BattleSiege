@@ -41,14 +41,26 @@ var TRAP <>
 var TRAP_SPENT ><
 var PROTECTED ??
 
+#Pieces: Paladin, Warmage, Empath, Ranger, Moon Mage, Thief, Traps
+# Enemy must always be last
+var PIECE_ORDER PALADIN|WARMAGE|EMPATH|RANGER|MOONMAGE|THIEF|TRAP1|TRAP2|ENEMY
+var PIECE_SHAPES 4|0|0|2|6|2|0|0|0
+var PIECE_INITIAL P|W|E|R|M|T|X|X|X
+var PIECE_HEALTH 5|5|4|4|3|2|0|0|0
+var PIECES 8
+
+var GAME_PIECES %PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF
+
+var DEBUG 0
+
 ##################
 
 put #class BattleSiege true
 var BattleSiege NewGame
-var COLUMNS A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
-eval RIGHT_EDGE element ("0|%COLUMNS","%GRID_MAX")
-eval BC element ("%COLUMNS","%GRID_MAX")
-eval BC replacere ("%COLUMNS","(%BC.*)","")
+var ALPHABET A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
+eval RIGHT_EDGE element ("0|%ALPHABET","%GRID_MAX")
+eval BC element ("%ALPHABET","%GRID_MAX")
+eval BC replacere ("%ALPHABET","(%BC.*)","")
 eval BC replacere ("%BC","\|","   "
 eval BC replacere ("%BC","^A"," *  A"
 eval BC replacere ("%BC","\s\s\s$","  *"
@@ -96,11 +108,18 @@ var TRAP2_SET 0
 var ENEMY_SET 0
 var PIECE PALADIN
 var ECHO_2 0
-var LOOP 1
-gosub SETVARS_LINKS
+gosub SETVARS LINKS
+var PIECES_SET 0
 
 REDRAW_DISPLAY:
+var TILE 0
+var INFO 0
+var STRIKE 0
+var SPECIAL_HIT 0
+var ENEMY_ACTION 0
+if %GAG_WHISPERS = 1 then put #ungag %OUTPUT_GAG
 gosub DISPLAY
+if %DEBUG = 1 then debug 10
 if %GAME_SETUP = 1 then gosub PIECE_INFO
 if ("%ECHO_2" != "0") then
     {
@@ -108,29 +127,8 @@ if ("%ECHO_2" != "0") then
     var ECHO_2 0
     }
 
-GAME_LOOP:
-gosub clear
-if %GAME_SETUP = 1 then goto GAME_SETUP_LOOP
-if %GAG_WHISPERS = 1 then put #ungag %OUTPUT_GAG
-if !matchre ("%STRIKE","^0$") then goto ENEMY_STRIKES
-if !matchre ("%INFO","^0$") then goto INFO_ON_MY_STRIKE
-if ("%P|%W|%E|%R|%M|%T" = "0|0|0|0|0|0") then gosub YOU_LOSE
-if ("%EP|%EW|%EE|%ER|%EM|%ET" = "0|0|0|0|0|0") then gosub YOU_WIN
-if %GAME_WON != 0 then
-    {
-    put #class BattleSiege false
-    exit
-    }
-matchre REQUEST_EMPATH_SPECIAL ^EMPATH_SPECIAL
-matchre REQUEST_MOONMAGE_LOCATE ^MOONMAGE_LOCATE
-matchre REQUEST_MOONMAGE_BACKTRACE ^MOONMAGE_BACKTRACE
-matchre STRIKE_AT_ENEMY ^SELECT_
-matchre REDRAW_DISPLAY ^REDRAW$
-matchre SAVE_GAME_ENEMY ^SAVE_GAME_ENEMY
-matchwait 2
-goto GAME_LOOP
-
 GAME_SETUP_LOOP:
+if %GAME_SETUP = 0 then goto GAME_LOOP
 matchre SET_PIECE ^SELECT_
 matchre SET_PIECE_ORIENTATION ^SHAPE_SET_
 matchre SET_ENEMY ^ENEMY_SELECT_
@@ -143,20 +141,38 @@ matchre LOAD_GAME_PRESET ^LOAD_GAME_PRESET
 matchre LOAD_GAME_ENEMY_LIST ^LOAD_GAME_ENEMY
 matchwait
 
+GAME_LOOP:
+gosub clear
+gosub END_CONDITIONS
+if ("%STRIKE|%INFO|%ENEMY_ACTION" = "%LAST_UPDATE") then
+    {
+    var LAST_UPDATE none
+    var STRIKE 0
+    var INFO 0
+    var ENEMY_ACTION 0
+    }
+if !matchre ("%STRIKE","^0$") then goto ENEMY_STRIKES
+if !matchre ("%INFO","^0$") then goto INFO_ON_MY_STRIKE
+if !matchre ("%ENEMY_ACTION","^0$") then goto PERFORM_ENEMY_ACTION
+matchre REQUEST_EMPATH_SENSE ^EMPATH_SPECIAL
+matchre REQUEST_MOONMAGE_LOCATE ^MOONMAGE_LOCATE
+matchre REQUEST_MOONMAGE_BACKTRACE ^MOONMAGE_BACKTRACE
+matchre STRIKE_AT_ENEMY ^SELECT_
+matchre REDRAW_DISPLAY ^REDRAW$
+matchre SAVE_GAME_ENEMY ^SAVE_GAME_ENEMY
+matchre SAVE_GAME_FORCED ^%ENEMY whispers\, \"BattleSiege\: Saving!\"
+matchwait 2
+goto GAME_LOOP
+
 START_GAME:
-var GAME_SETUP 0
-var ENEMYTURN 0
-var MYTURN 0
-var MEFIRST
-var ENFIRST
 action var STRIKE $2 when ^%ENEMY.*(says|asks|exclaims|yells|belts out).*\,\s\".*([A-Z]\d+|\d+[A-Z])
 action var STRIKE SLATE when ^%ENEMY shows you (his|her) slate
 action var SLATESTRIKE $1 when ^The slate reads\:.*([A-Z]\d+|\d+[A-Z])
+action var ENEMY_ACTION $1 when ^%ENEMY whispers\, \"BattleSiege\: My Empath senses life around (.*)\!"
+action var ENEMY_ACTION $1 when ^%ENEMY whispers\, \"BattleSiege\: My Moon Mage casts Locate at (.*)\!"
+action var ENEMY_ACTION BACKTRACE when ^%ENEMY whispers\, \"BattleSiege\: My Moon Mage backtraces yours\!"
 action var INFO $1 when ^%ENEMY whispers\, \"BattleSiege\: Your strike reveals (.*)\!\"
-action var INFO $1 when ^%ENEMY whispers\, \"BattleSiege\: The explosion of your mana trap reveals (.*)\!\"
-action var INFO $1 when ^%ENEMY whispers\, \"BattleSiege\: My Empath senses life around (.*)\!"
-action var INFO $1;var SPECIAL_HIT Locate when ^%ENEMY whispers\, \"BattleSiege\: My Moon Mage casts Locate at (.*)\!"
-action var INFO MOONMAGE when ^%ENEMY whispers\, \"BattleSiege\: My Moon Mage backtraces yours\!"
+action var INFO $1;var SPECIAL_HIT TRAP when ^%ENEMY whispers\, \"BattleSiege\: The explosion of your mana trap reveals (.*)\!\"
 action var INFO $1;var SPECIAL_HIT WarMage when ^%ENEMY whispers\, \"BattleSiege\: Your Warrior Mage's self-immolation reveals (.*)\!\"
 action var INFO $1;var SPECIAL_HIT Empath when ^%ENEMY whispers\, \"BattleSiege\: Your Empath's senses reveal (.*)\!"
 action var INFO $1;var SPECIAL_HIT MoonMage when ^%ENEMY whispers\, \"BattleSiege\: Your Moon Mage's Locate spell reveals (.*)\!"
@@ -168,12 +184,23 @@ action var EE 0 when ^%ENEMY whispers\, \"BattleSiege\:.*\:KILL E
 action var ER 0 when ^%ENEMY whispers\, \"BattleSiege\:.*\:KILL R
 action var EM 0 when ^%ENEMY whispers\, \"BattleSiege\:.*\:KILL M
 action var ET 0 when ^%ENEMY whispers\, \"BattleSiege\:.*\:KILL T
-var OUTPUT_GAG {^You whisper to %ENEMY\, \"BattleSiege\:|^$scriptname}
-var INPUT_GAG {^%ENEMY whispers\, \"BattleSiege\:}
+var OUTPUT_GAG {^You whisper to %ENEMY\, \"BattleSiege\:|^$scriptname} {BattleSiege}
+var INPUT_GAG {^%ENEMY whispers\, \"BattleSiege\:} {BattleSiege}
+if %GAG_WHISPERS = 1 then
+    {
+    put #gag %OUTPUT_GAG
+    put #gag %INPUT_GAG
+    }
 var STRIKE 0
 var SLATESTRIKE 0
 var INFO 0
 var SPECIAL_HIT 0
+var GAME_SETUP 0
+var ENEMYTURN 0
+var MYTURN 0
+var MEFIRST
+var ENFIRST
+var LAST_UPDATE none
 goto REDRAW_DISPLAY
 
 LIST_PEOPLE:
@@ -214,21 +241,29 @@ goto REDRAW_DISPLAY
 ####### STRIKES ############
 
 
+EXTRACT:
+eval LETTER replacere ("$0","\d+","")
+eval NUMBER replacere ("$0","[A-Z]","")
+return
+
 INFO_ON_MY_STRIKE:
+var LAST_UPDATE 0|%INFO|0
 math MYTURN add 1
 if ("%ENFIRST" = "") then var MEFIRST First Strike!
-if %INFO = MOONMAGE then goto MOONMAGE_BACKTRACE
 if matchre ("%INFO","\|") then goto REVEAL_MULTI_TILES
-if !matchre ("%INFO","\:") then goto EMPATH_SPECIAL
 eval TILE replacere ("%INFO","\:.*","")
 eval FILL replacere ("%INFO","^.*\:","")
 if %SPECIAL_HIT = Thief then
     {
     math MYTURN subtract 1
-    var SPECIAL_HIT 0
-    var ECHO_2 Your Thief manages to lash out with their dying breath, striking at tile %TILE!
+    var ECHO_2 Your Thief lashes out with their dying breath, striking tile %TILE!
     }
-var INFO 0
+if %SPECIAL_HIT = Backtrace then
+    {
+    var ECHO_2 Your Moon Mage backtraces the locate...
+    var E%TILE {%FILL:#parse SELECT_%TILE}
+    goto REDRAW_DISPLAY
+    }
 var E%TILE %BH
 if %FILL = PROTECTED then var E%TILE {%PROTECTED:#parse SELECT_%TILE}
 if %FILL = MISS then var E%TILE %BB
@@ -245,35 +280,25 @@ if %FILL = PROTECTED then var ECHO_2 %ENEMY's Paladin deflects the attack on %TI
 goto REDRAW_DISPLAY
 
 REVEAL_MULTI_TILES:
-math MYTURN subtract 1
-var ECHO_2 %ENEMY's mana trap explodes, revealing several of your tiles to %ENEMY!
+var ECHO_2 Your mana trap explodes, revealing several of %ENEMY's tiles to you! Score!
 var INFO 0|%INFO
 eval LOOP count ("%INFO","|")
-if %SPECIAL_HIT = Locate then
-    {
-    eval TILE element ("%INFO","1")
-    eval FILL element ("%INFO","2")    
-    var ECHO_2 %ENEMY's Moon Mage casts Locate on tiles %TILE and %FILL!
-    if %M != 0 then var ECHO_2 %ECHO_2 {Backtrace:#parse MOONMAGE_BACKTRACE} it?
-    goto MOONMAGE_LOCATE
-    }
 if %SPECIAL_HIT = MoonMage then
     {
-    math MYTURN add 1
-    eval TILE element ("%INFO","1")
-    eval TILE replacere ("%TILE","\:.*","")
-    eval FILL element ("%INFO","2")
-    eval FILL replacere ("%FILL","\:.*","")
-    var ECHO_2 Your Moon Mage casts locate on tiles %TILE and %FILL!
+    eval ECHO_1 element ("%INFO","1")
+    eval ECHO_1 replacere ("%ECHO_1!","\:.*","")
+    eval ECHO_2 element ("%INFO","2")
+    eval ECHO_2 replacere ("%ECHO_2","\:.*","")
+    var ECHO_2 Your Moon Mage casts locate on tiles %ECHO_1 and %ECHO_2!
     math MOONMAGE_SPECIAL subtract 1
     }
 if %SPECIAL_HIT = Backtrace then
     {
-    math MYTURN add 1
     var ECHO_2 Your Moon Mage backtraces the locate...
     }
 if %SPECIAL_HIT = WarMage then
     {
+    math MYTURN subtract 1
     var ECHO_2 Your Warrior Mage manages to conflagrate the area with their dying breath, striking out all around them!
     }
 if %SPECIAL_HIT = Empath then
@@ -281,6 +306,7 @@ if %SPECIAL_HIT = Empath then
     var ECHO_2 Your Empath reaches out to sense nearby dangers!
     var EMPATH_SPECIAL 0
     }
+if %SPECIAL_HIT = TRAP then math MYTURN subtract 1    
 
 REVEAL_MULTI_TILES_LOOP:
 eval VALIDSTRIKE element ("%INFO","%LOOP")
@@ -297,98 +323,94 @@ if matchre ("%SPECIAL_HIT","MoonMage") then
     if %FILL = %BE then var E%TILE %BE
     if %FILL = %TRAP then var E%TILE %TRAP
     goto REVEAL_MULTI_TILES_LOOP_NEXT
-    }    
+    }
 var E%TILE %BH
 if %FILL = PROTECTED then var E%TILE {%PROTECTED:#parse SELECT_%TILE}
 if %FILL = MISS then var E%TILE %BB
-if %FILL = TRAP then var E%TILE %TRAP
+if %FILL = TRAP then var E%TILE %TRAP_SPENT
 if matchre ("%FILL","KILL T") then gosub THIEF_SPECIAL
 if matchre ("%FILL","KILL W") then gosub WARMAGE_SPECIAL
 
 REVEAL_MULTI_TILES_LOOP_NEXT:
 math LOOP subtract 1
 if %LOOP != 0 then goto REVEAL_MULTI_TILES_LOOP
-var SPECIAL_HIT 0
-var INFO 0
 goto REDRAW_DISPLAY
 
-HIT_WHO:
-if $0 = %PALADIN then var SPECIAL_HIT Paladin
-if $0 = %WARMAGE then var SPECIAL_HIT Warrior Mage
-if $0 = %EMPATH then var SPECIAL_HIT Empath
-if $0 = %RANGER then var SPECIAL_HIT Ranger
-if $0 = %MOONMAGE then var SPECIAL_HIT Moon Mage
-if $0 = %THIEF then var SPECIAL_HIT Thief
-return
-
 THIEF_SPECIAL:
+var SPECIAL_HIT ThiefDeath
 eval EN_THIEF_SPECIAL replacere ("%FILL","KILL T ","")
-eval TILE_LETTER replacere ("%TILE","\d+","")
-eval TILE_NUMBER replacere ("%TILE","[A-Z]","")
-var SPECIAL_TILE %TILE_LETTER%TILE_NUMBER
-if matchre ("%%EN_THIEF_SPECIAL","\d+") then
+gosub EXTRACT %TILE
+var TILE_1 %LETTER%NUMBER
+if matchre ("%EN_THIEF_SPECIAL","\d+") then
     {
-    var SPECIAL_LOOP %TILE_NUMBER
+    var LOOP %NUMBER
     goto THIEF_SPECIAL_SCAN
     }
-var SPECIAL_LOOP 1
-
-FIND_THIEF_SPECIAL_LETTER:
-eval SPECIAL_LETTER element ("0|%COLUMNS","%SPECIAL_LOOP")
-if %SPECIAL_LETTER = %TILE_LETTER then goto THIEF_SPECIAL_SCAN
-math SPECIAL_LOOP add 1
-goto FIND_THIEF_SPECIAL_LETTER
+eval TILE replacere ("%ALPHABET","%EN_THIEF_SPECIAL\|.*","")
+eval LOOP count ("%0|%TILE|%EN_THIEF_SPECIAL","|")
 
 THIEF_SPECIAL_SCAN:
-math SPECIAL_LOOP add 1
-if %SPECIAL_LOOP > %GRID_MAX then var SPECIAL_LOOP 1
-if matchre ("%%EN_THIEF_SPECIAL","\d+") then var TILE_NUMBER %SPECIAL_LOOP
-else eval TILE_LETTER element ("0|%COLUMNS","%SPECIAL_LOOP")
-var TILE %TILE_LETTER%TILE_NUMBER
-if %TILE = %SPECIAL_TILE then
-    {
-    var SPECIAL_HIT 0
-    return
-    }
-if matchre ("%%TILE","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then goto THIEF_HIT_WHO
+math LOOP add 1
+if %LOOP > %GRID_MAX then var LOOP 1
+if matchre ("%EN_THIEF_SPECIAL","\d+") then var NUMBER %LOOP
+else eval LETTER element ("0|%ALPHABET","%LOOP")
+var TILE %LETTER%NUMBER
+if %TILE = %TILE_1 then return
+if matchre ("%%TILE","%GAME_PIECES") then goto THIEF_HIT_WHO
 goto THIEF_SPECIAL_SCAN
 
 THIEF_HIT_WHO:
-gosub HIT_WHO %%TILE
-var ECHO_2 As %ENEMY's thief perishes, they let loose with a throwing knife and strike your %SPECIAL_HIT!
-var SPECIAL_HIT 0
 var VALIDSTRIKE %TILE
 gosub TILE_HIT
+gosub HIT_WHO %TILE
+var ECHO_2 As %ENEMY's thief perishes, they let loose with a throwing knife and strike your %SPECIAL_HIT!
 var WHISPER Your Thief's dying strike reveals %VALIDSTRIKE:%ECHO!
 goto WHISPER_RETURN
 
+HIT_WHO:
+if ("$0" = "%PALADIN") then var SPECIAL_HIT Paladin
+if ("$0" = "%WARMAGE") then var SPECIAL_HIT Warrior Mage
+if ("$0" = "%EMPATH") then var SPECIAL_HIT Empath
+if ("$0" = "%RANGER") then var SPECIAL_HIT Ranger
+if ("$0" = "%MOONMAGE") then var SPECIAL_HIT Moon Mage
+if ("$0" = "%THIEF") then var SPECIAL_HIT Thief
+if ("$0" = "%TRAP") then var SPECIAL_HIT mana trap
+return
+
 RANGER_SPECIAL:
-if %RANGER_SPECIAL_CHARGES = 0 then return
-if matchre ("%RANGER_SPECIAL","\d") then var TILE_NUMBER %RANGER_SPECIAL
-if matchre ("%RANGER_SPECIAL","[A-Z]") then var TILE_LETTER %RANGER_SPECIAL
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%BE") then
+if %RANGER_CHARGES = 0 then return
+if matchre ("%RANGER_SPECIAL","\d") then var NUMBER %RANGER_SPECIAL
+if matchre ("%RANGER_SPECIAL","[A-Z]") then var LETTER %RANGER_SPECIAL
+if matchre ("%%LETTER%NUMBER","%BE") then
     {
-    var %TILE_LETTER%TILE_NUMBER %RANGER
+    var %LETTER%NUMBER %RANGER
     var %VALIDSTRIKE %BE
     var TILE %BE
-    math RANGER_SPECIAL_CHARGES subtract 1
+    math RANGER_CHARGES subtract 1
     var ECHO_2 %ENEMY strikes at %VALIDSTRIKE but your Ranger dodges!
     }
 return
 
 REQUEST_MOONMAGE_LOCATE:
+gosub COUNT_TILES_REMAINING
+if %TILES < 2 then
+    {
+    var ECHO_2 Why bother...? Also, your Moon Mage runs out of mana now.
+    var MOONMAGE_SPECIAL 0
+    goto REDRAW_DISPLAY
+    }
 var ECHO_TILES 0
 
 PICK_LOCATE_TILES_LOOP:
 random 1 %GRID_MAX
 if matchre ("%r","-") then eval r replacere ("%r","-","")
-var TILE_NUMBER %r
+var NUMBER %r
 pause 0.001
 random 1 %GRID_MAX
 if matchre ("%r","-") then eval r replacere ("%r","-","")
-eval TILE_LETTER element ("0|%COLUMNS","%r")
-if matchre ("%ECHO_TILES","%TILE_LETTER%TILE_NUMBER") then goto PICK_LOCATE_TILES_LOOP
-if matchre ("%E%TILE_LETTER%TILE_NUMBER","%TILE_BUTTON") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER
+eval LETTER element ("0|%ALPHABET","%r")
+if matchre ("%ECHO_TILES","%LETTER%NUMBER") then goto PICK_LOCATE_TILES_LOOP
+if matchre ("%E%LETTER%NUMBER","%TILE_BUTTON") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER
 eval LOOP count ("%ECHO_TILES","|")
 if %LOOP < 2 then goto PICK_LOCATE_TILES_LOOP
 eval ECHO_TILES replacere ("%ECHO_TILES","^0\|","")
@@ -401,34 +423,25 @@ var WHISPER My Moon Mage backtraces yours!
 gosub WHISPER_RETURN
 goto GAME_LOOP
 
+REQUEST_EMPATH_SENSE:
+if ("%ENFIRST" = "") then var MEFIRST First Strike!
+var WHISPER My Empath senses life around %EMPATH_SPECIAL!
+gosub WHISPER_RETURN
+goto GAME_LOOP
+
 MOONMAGE_LOCATE:
-#var BACKTRACE_ENABLED 1
 var SPECIAL_HIT 0
-var ECHO_TILES 0
-
-var LOOP 1
-gosub COUNT_TILES_REMAINING
-if TILES < 2 then
-    {
-    var ECHO_2 Why bother...? Also, your Moon Mage runs out of mana now.
-    var MOONMAGE_SPECIAL 0
-    goto REDRAW_DISPLAY
-    }
-
-MOONMAGE_LOCATE_LOOP:
-eval TILE element ("%INFO","%LOOP")
+eval TILE element ("%ENEMY_ACTION","0")
+var ECHO_TILES %TILE:%%TILE
+eval TILE element ("%ENEMY_ACTION","1")
 var ECHO_TILES %ECHO_TILES|%TILE:%%TILE
-math LOOP subtract 1
-if %LOOP != 0 then goto MOONMAGE_LOCATE_LOOP
-eval ECHO_TILES replacere ("%ECHO_TILES","^0\|","")
-var INFO 0
+var ENEMY_ACTION 0
 var WHISPER Your Moon Mage's Locate spell reveals %ECHO_TILES!
 goto WHISPER
 
 MOONMAGE_BACKTRACE:
 var ECHO_TILES 0
-var LOOP 1
-gosub SETVARS_FIND
+gosub SETVARS FIND
 eval ECHO_TILES replacere ("%ECHO_TILES","^0\|","")
 var WHISPER Your Moon Mage's backtrace reveals %ECHO_TILES!
 var INFO 0
@@ -436,89 +449,81 @@ var SPECIAL_HIT 0
 gosub WHISPER_RETURN
 goto GAME_LOOP
 
-REQUEST_EMPATH_SPECIAL:
-math MYTURN add 1
-if ("%ENFIRST" = "") then var MEFIRST First Strike!
-var WHISPER My Empath senses life around %EMPATH_SPECIAL!
-gosub WHISPER_RETURN
-goto GAME_LOOP
+PERFORM_ENEMY_ACTION:
+var LAST_UPDATE 0|0|%ENEMY_ACTION
+math ENEMYTURN add 1
+if ("%MEFIRST" = "") then var ENFIRST First Strike!
+if %ENEMY_ACTION = BACKTRACE then goto MOONMAGE_BACKTRACE
+if !matchre ("%ENEMY_ACTION","\|") then goto EMPATH_SPECIAL
+eval ECHO_1 element ("%ENEMY_ACTION","0")
+eval ECHO_2 element ("%ENEMY_ACTION","1")
+var ECHO_2 %ENEMY's Moon Mage casts Locate on tiles %ECHO_1 and %ECHO_2!
+if %M != 0 then var ECHO_2 %ECHO_2 {Backtrace:#parse MOONMAGE_BACKTRACE} it?
+goto MOONMAGE_LOCATE
 
 EMPATH_SPECIAL:
 var ECHO_TILES 0
 #starting from bottom left tile, going clockwise from the left
-eval TILE_LETTER replacere ("%INFO","\d+","")
-eval TILE_NUMBER replacere ("%INFO","[A-Z]","")
-if matchre ("%E%TILE_LETTER%TILE_NUMBER","%TILE_BUTTON") then var E%TILE_LETTER%TILE_NUMBER {%EMPATH:#parse SELECT_%TILE_LETTER%TILE_NUMBER}
-math TILE_NUMBER subtract 1
-if matchre ("%E%TILE_LETTER%TILE_NUMBER","%TILE_BUTTON") then var E%TILE_LETTER%TILE_NUMBER {%EMPATH:#parse SELECT_%TILE_LETTER%TILE_NUMBER}
+gosub EXTRACT %ENEMY_ACTION
+if matchre ("%E%LETTER%NUMBER","%TILE_BUTTON") then var E%LETTER%NUMBER {%EMPATH:#parse SELECT_%LETTER%NUMBER}
+math NUMBER subtract 1
+if matchre ("%E%LETTER%NUMBER","%TILE_BUTTON") then var E%LETTER%NUMBER {%EMPATH:#parse SELECT_%LETTER%NUMBER}
 gosub NEXT_LETTER
-if matchre ("%E%TILE_LETTER%TILE_NUMBER","%TILE_BUTTON") then var E%TILE_LETTER%TILE_NUMBER {%EMPATH:#parse SELECT_%TILE_LETTER%TILE_NUMBER}
-math TILE_NUMBER add 1
-if matchre ("%E%TILE_LETTER%TILE_NUMBER","%TILE_BUTTON") then var E%TILE_LETTER%TILE_NUMBER {%EMPATH:#parse SELECT_%TILE_LETTER%TILE_NUMBER}
+if matchre ("%E%LETTER%NUMBER","%TILE_BUTTON") then var E%LETTER%NUMBER {%EMPATH:#parse SELECT_%LETTER%NUMBER}
+math NUMBER add 1
+if matchre ("%E%LETTER%NUMBER","%TILE_BUTTON") then var E%LETTER%NUMBER {%EMPATH:#parse SELECT_%LETTER%NUMBER}
 gosub PREV_LETTER_2
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER:%%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER:%%TILE_LETTER%TILE_NUMBER
+if matchre ("%%LETTER%NUMBER","%GAME_PIECES") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%%LETTER%NUMBER
+math NUMBER subtract 1
+if matchre ("%%LETTER%NUMBER","%GAME_PIECES") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%%LETTER%NUMBER
 gosub NEXT_LETTER
-math TILE_NUMBER subtract 1
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER:%%TILE_LETTER%TILE_NUMBER
+math NUMBER subtract 1
+if matchre ("%%LETTER%NUMBER","%GAME_PIECES") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%%LETTER%NUMBER
 gosub NEXT_LETTER
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER:%%TILE_LETTER%TILE_NUMBER
+if matchre ("%%LETTER%NUMBER","%GAME_PIECES") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%%LETTER%NUMBER
 gosub NEXT_LETTER
-math TILE_NUMBER add 1
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER:%%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER:%%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
+math NUMBER add 1
+if matchre ("%%LETTER%NUMBER","%GAME_PIECES") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%%LETTER%NUMBER
+math NUMBER add 1
+if matchre ("%%LETTER%NUMBER","%GAME_PIECES") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%%LETTER%NUMBER
+math NUMBER add 1
 gosub PREV_LETTER
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER:%%TILE_LETTER%TILE_NUMBER
+if matchre ("%%LETTER%NUMBER","%GAME_PIECES") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%%LETTER%NUMBER
 gosub PREV_LETTER
-if matchre ("%%TILE_LETTER%TILE_NUMBER","%PALADIN|%WARMAGE|%EMPATH|%RANGER|%MOONMAGE|%THIEF") then var ECHO_TILES %ECHO_TILES|%TILE_LETTER%TILE_NUMBER:%%TILE_LETTER%TILE_NUMBER
-var INFO 0
+if matchre ("%%LETTER%NUMBER","%GAME_PIECES") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%%LETTER%NUMBER
+var ENEMY_ACTION 0
 eval ECHO_TILES replacere ("%ECHO_TILES","^0\|","")
 var WHISPER Your Empath's senses reveal %ECHO_TILES!
 pause
-gosub WHISPER_RETURN
-goto GAME_LOOP
+goto WHISPER
 
 WARMAGE_SPECIAL:
+var SPECIAL_HIT WarMage
 eval EN_WARMAGE_SPECIAL replacere ("%FILL","KILL W ","")
 var TILES 0
 var ECHO_TILES 0
-eval TILE_LETTER replacere ("%EN_WARMAGE_SPECIAL","\d+","")
-eval TILE_NUMBER replacere ("%EN_WARMAGE_SPECIAL","[A-Z]","")
-#var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+gosub EXTRACT %EN_WARMAGE_SPECIAL
+#var TILES %TILES|%LETTER%NUMBER
 # 4 is enough tiles
-math TILE_NUMBER add 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-eval LOOP count ("%TILES","|")
-gosub TILE_HIT_LOOP
-var SPECIAL_HIT WarMage
-eval LOOP count ("%ECHO_TILES","|")
-goto REVEAL_MY_MULTI_TILES_LOOP
+gosub TILE_SW
+gosub TILE_N2
+gosub TILE_E2
+gosub TILE_S2
+goto REVEAL_MY_MULTI_TILES
 
 MANA_TRAP_TRIGGERED:
+var ECHO_2 %ENEMY's mana trap explodes, revealing several of your tiles to %ENEMY!
 var TILES 0
 var ECHO_TILES 0
-eval TILE_LETTER replacere ("%TILE","\d+","")
-eval TILE_NUMBER replacere ("%TILE","[A-Z]","")
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+gosub EXTRACT %TILE
+gosub TILE_W
+gosub TILE_NE
+gosub TILE_SE
+gosub TILE_SW
+gosub TILE_N
+goto REVEAL_MY_MULTI_TILES
+
+REVEAL_MY_MULTI_TILES:
 eval LOOP count ("%TILES","|")
 gosub TILE_HIT_LOOP
 eval LOOP count ("%ECHO_TILES","|")
@@ -547,8 +552,7 @@ goto WHISPER
 
 TILE_HIT_LOOP:
 eval VALIDSTRIKE element ("%TILES","%LOOP")
-eval TILE_LETTER replacere ("%VALIDSTRIKE","\d+","")
-eval TILE_NUMBER replacere ("%VALIDSTRIKE","[A-Z]","")
+gosub EXTRACT %VALIDSTRIKE
 gosub TILE_HIT
 var ECHO_TILES %ECHO_TILES|%VALIDSTRIKE:%ECHO
 math LOOP subtract 1
@@ -561,23 +565,26 @@ var ECHO MISS
 if matchre ("%TILE","%PALADIN") then gosub HIT_SCORE P
 else
     {
-    if %P != 0 then
+    if (("%P" != "0") && ("%SPECIAL_HIT" != "ThiefDeath") then
         {
-        gosub PALADIN_SPECIAL
-        if matchre ("%PALADIN_SPECIAL","%PALADIN") then
+        if !matchre ("%TILE","%TRAP|%BE") then
             {
-            var ECHO PROTECTED
-            return
+            gosub PALADIN_SPECIAL
+            if matchre ("%PALADIN_SPECIAL","%PALADIN") then
+                {
+                var ECHO PROTECTED
+                return
+                }
+            var NUMBER %BACKUP_NUMBER
+            var LETTER %BACKUP_LETTER
             }
-        var %TILE_NUMBER %BACKUP_NUMBER
-        var %TILE_LETTER %BACKUP_LETTER
         }
     }
 if matchre ("%TILE","%WARMAGE") then gosub HIT_SCORE W
 if matchre ("%TILE","%EMPATH") then gosub HIT_SCORE E
 if matchre ("%TILE","%RANGER") then
     {
-    gosub RANGER_SPECIAL
+    if ("%SPECIAL_HIT" != "ThiefDeath") then gosub RANGER_SPECIAL
     if matchre ("%TILE","%RANGER") then gosub HIT_SCORE R
     }
 if matchre ("%TILE","%MOONMAGE") then gosub HIT_SCORE M
@@ -600,22 +607,23 @@ if %ECHO = KILL W then var ECHO KILL W %WARMAGE_SPECIAL
 return
 
 PALADIN_SPECIAL:
-var BACKUP_NUMBER %TILE_NUMBER
-var BACKUP_LETTER %TILE_LETTER
-var PALADIN_SPECIAL
-math TILE_NUMBER subtract 1
-var PALADIN_SPECIAL %PALADIN_SPECIAL|%%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 2
-var PALADIN_SPECIAL %PALADIN_SPECIAL|%%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
+var BACKUP_NUMBER %NUMBER
+var BACKUP_LETTER %LETTER
+var PALADIN_SPECIAL 0
+math NUMBER subtract 1
+var PALADIN_SPECIAL %PALADIN_SPECIAL|%%LETTER%NUMBER
+math NUMBER add 2
+var PALADIN_SPECIAL %PALADIN_SPECIAL|%%LETTER%NUMBER
+math NUMBER subtract 1
 gosub NEXT_LETTER
-var PALADIN_SPECIAL %PALADIN_SPECIAL|%%TILE_LETTER%TILE_NUMBER
+var PALADIN_SPECIAL %PALADIN_SPECIAL|%%LETTER%NUMBER
 gosub PREV_LETTER_2
-var PALADIN_SPECIAL %PALADIN_SPECIAL|%%TILE_LETTER%TILE_NUMBER
-eval PALADIN_SPECIAL replacere ("%PALADIN_SPECIAL","^\|","")
+var PALADIN_SPECIAL %PALADIN_SPECIAL|%%LETTER%NUMBER
+eval PALADIN_SPECIAL replacere ("%PALADIN_SPECIAL","^0\|","")
 return
 
 ENEMY_STRIKES:
+var LAST_UPDATE %STRIKE|0|0
 math ENEMYTURN add 1
 if ("%MEFIRST" = "") then var ENFIRST First Strike!
 var VALIDSTRIKE %STRIKE
@@ -625,14 +633,12 @@ if ("%VALIDSTRIKE" = "SLATE") then
     if matchre ("%SLATESTRIKE","^0$") then goto GAME_LOOP
     else var VALIDSTRIKE %SLATESTRIKE
     }
-eval TILE_LETTER replacere ("%VALIDSTRIKE","\d+","")
-eval TILE_NUMBER replacere ("%VALIDSTRIKE","[A-Z]","")
-var VALIDSTRIKE %TILE_LETTER%TILE_NUMBER
-if %TILE_NUMBER > %GRID_MAX then goto GAME_LOOP
-eval TILE_LETTER replacere ("%COLUMNS","%TILE_LETTER\|.*","")
-eval TILE_LETTER count ("%TILE_LETTER","|")
-if %TILE_LETTER > %GRID_MAX then goto GAME_LOOP
-eval TILE_LETTER replacere ("%VALIDSTRIKE","\d+","")
+gosub EXTRACT %VALIDSTRIKE
+var VALIDSTRIKE %LETTER%NUMBER
+eval TILE replacere ("%ALPHABET","%LETTER\|.*","")
+eval TILE count ("%TILE","|")
+if %TILE > %GRID_MAX then goto GAME_LOOP
+if %NUMBER > %GRID_MAX then goto GAME_LOOP
 gosub TILE_HIT
 var SLATESTRIKE 0
 var WHISPER Your strike reveals %VALIDSTRIKE:%ECHO!
@@ -725,18 +731,11 @@ goto SHOW_SLATE
 
 ####### PIECE SETUP ########
 
-
 PIECE_INFO:
-if %ENEMY_SET = 0 then var PIECE ENEMY
-if %TRAP2_SET = 0 then var PIECE TRAP2
-if %TRAP_SET = 0 then var PIECE TRAP
-if %THIEF_SET = 0 then var PIECE THIEF
-if %MOONMAGE_SET = 0 then var PIECE MOONMAGE
-if %RANGER_SET = 0 then var PIECE RANGER
-if %EMPATH_SET = 0 then var PIECE EMPATH
-if %WARMAGE_SET = 0 then var PIECE WARMAGE
-if %PALADIN_SET = 0 then var PIECE PALADIN
-var ORIENT 0
+eval PIECE element ("%PIECE_INITIAL","%PIECES_SET")
+eval %PIECE element ("%PIECE_HEALTH","%PIECES_SET")
+eval PIECE element ("%PIECE_ORDER","%PIECES_SET")
+eval ORIENT element ("%PIECE_SHAPES","%PIECES_SET")
 var TILE 0
 if %PIECE = PALADIN then
     {
@@ -776,7 +775,6 @@ if %PIECE = RANGER then
     put #echo >%WINDOW mono "  # >  |  < #  |         |          "
     put #echo >%WINDOW mono "{Shape 1:#parse SHAPE_SET_1}|{Shape 2:#parse SHAPE_SET_2}|{Shape 3:#parse SHAPE_SET_3}  |{Shape 4:#parse SHAPE_SET_4}"
     put #echo >%WINDOW mono "(Give your Ranger space - they can dodge twice!)
-    var ORIENT 1
     }
 if %PIECE = MOONMAGE then
     {
@@ -787,7 +785,6 @@ if %PIECE = MOONMAGE then
     put #echo >%WINDOW mono " #     |     # | #   # |       |  #    |    # "
     put #echo >%WINDOW mono "{Shape 1:#parse SHAPE_SET_1}|{Shape 2:#parse SHAPE_SET_2}|{Shape 3:#parse SHAPE_SET_3}|{Shape 4:#parse SHAPE_SET_4}|{Shape 5:#parse SHAPE_SET_5}|{Shape 6:#parse SHAPE_SET_6}"
     put #echo >%WINDOW mono "(Moon Mages can Locate, but not damage, 2 random squares, and Backtrace enemy Moon Mages!)
-    var ORIENT 1
     }
 if %PIECE = THIEF then
     {
@@ -798,19 +795,11 @@ if %PIECE = THIEF then
     put #echo >%WINDOW mono " v     |       "
     put #echo >%WINDOW mono "{Shape 1:#parse SHAPE_SET_1}|{Shape 2:#parse SHAPE_SET_2}"
     put #echo >%WINDOW mono "(Thieves will strike far in the pointed direction when killed!)
-    var ORIENT 1
     }
-if %PIECE = TRAP then
+if %PIECE = TRAP1 then put #echo >%WINDOW mono "Select the tile to lay your first Mana Trap:
+if %PIECE = TRAP2 then put #echo >%WINDOW mono "Select the tile to lay your second Mana Trap:"
+if matchre ("%PIECE","TRAP") then
     {
-    put #echo >%WINDOW mono "Select the tile to lay your first Mana Trap:"
-    put #echo >%WINDOW mono "   !   "
-    put #echo >%WINDOW mono " ! # ! "
-    put #echo >%WINDOW mono "   !   "
-    put #echo >%WINDOW mono "(The trap is a single-tile which reveals four adjacent tiles when hit.)"
-    }
-if %PIECE = TRAP2 then
-    {
-    put #echo >%WINDOW mono "Select the tile to lay your second Mana Trap:"
     put #echo >%WINDOW mono "   !   "
     put #echo >%WINDOW mono " ! # ! "
     put #echo >%WINDOW mono "   !   "
@@ -825,13 +814,11 @@ put #echo >%WINDOW
 return
 
 SET_PIECE:
-pause 0.1
 if matchre ("%PIECE","PALADIN|WARMAGE") then
     {
     if matchre ("%TILE","^(A|%RIGHT_EDGE)|([A-Z]1|%GRID_MAX)$") then
         {
         put #echo >%WINDOW mono "Center tile cannot be on the edge of the board!"
-        var TILE 0
         goto GAME_SETUP_LOOP
         }
     }
@@ -840,20 +827,18 @@ if matchre ("%PIECE","EMPATH") then
     if matchre ("%TILE","^%RIGHT_EDGE|[A-Z]1$") then
         {
         put #echo >%WINDOW mono "Bottom-left tile cannot be on the upper or right edge of the board!"
-        var TILE 0
         goto GAME_SETUP_LOOP
         }
     }
 if matchre ("%PIECE","RANGER") then
     {
-    evalmath TILE_NUMBER %GRID_MAX - 1
-    eval TILE_LETTER element ("0|%COLUMNS","%TILE_NUMBER")
-    evalmath TILE_NUMBER %GRID_MAX - 2
-    eval TILES element ("0|%COLUMNS","%TILE_NUMBER")
-    if matchre ("%TILE","(%TILE_LETTER|%TILES|%RIGHT_EDGE)(1|2|3)$") then
+    evalmath NUMBER %GRID_MAX - 1
+    eval LETTER element ("0|%ALPHABET","%NUMBER")
+    evalmath NUMBER %GRID_MAX - 2
+    eval TILES element ("0|%ALPHABET","%NUMBER")
+    if matchre ("%TILE","(%LETTER|%TILES|%RIGHT_EDGE)(1|2|3)$") then
         {
         put #echo >%WINDOW mono "Bottom-left tile cannot be in this corner!"
-        var TILE 0
         goto GAME_SETUP_LOOP
         }
     }
@@ -862,7 +847,6 @@ if matchre ("%PIECE","MOONMAGE") then
     if matchre ("%TILE","A1|A%GRID_MAX|%RIGHT_EDGE1|%RIGHTE_EDGE%GRID_MAX") then
         {
         put #echo >%WINDOW mono "Middle tile cannot be in a corner!"
-        var TILE 0
         goto GAME_SETUP_LOOP
         }
     }
@@ -871,7 +855,6 @@ if matchre ("%PIECE","THIEF") then
     if matchre ("%TILE","^%RIGHT_EDGE1$") then
         {
         put #echo >%WINDOW mono "Bottom-left tile cannot be in this corner!"
-        var TILE 0
         goto GAME_SETUP_LOOP
         }
     }
@@ -880,24 +863,21 @@ if matchre ("%PIECE","TRAP") then
     if matchre ("%TILE","^(A|%RIGHT_EDGE)|([A-Z]1|%GRID_MAX)$") then
         {
         put #echo >%WINDOW mono "Mana trap tile cannot be on the edge of the board!"
-        var TILE 0
         goto GAME_SETUP_LOOP
         }
     }
 put #echo >%WINDOW mono "Selected tile %TILE!"
 var TILES 0
-eval TILE_LETTER replacere ("%TILE","\d+","")
-eval TILE_NUMBER replacere ("%TILE","[A-Z]","")
+eval LETTER replacere ("%TILE","\d+","")
+eval NUMBER replacere ("%TILE","[A-Z]","")
 if %PIECE = WARMAGE then goto PLACE_WARMAGE
 if %PIECE = EMPATH then goto PLACE_EMPATH
-if %PIECE = TRAP then goto PLACE_TRAP
+if %PIECE = TRAP1 then goto PLACE_TRAP1
 if %PIECE = TRAP2 then goto PLACE_TRAP2
-if %ORIENT = 1 then goto GAME_SETUP_LOOP
-put #echo >Log BattleSiege: This text should never display.
-goto REDRAW_DISPLAY
+if %ORIENT != 0 then goto GAME_SETUP_LOOP
+goto LOGIC_ERROR
 
 SET_PIECE_ORIENTATION:
-pause 0.1
 var TILES 0
 if %TILE = 0 then
     {
@@ -907,8 +887,8 @@ if %TILE = 0 then
 var PLACE_TILE %TILE
 if %PIECE = THIEF then
     {
-    if %SHAPE = 1 then goto PLACE_THIEF_TALL
-    else goto PLACE_THIEF_WIDE
+    if %SHAPE = 1 then goto PLACE_THIEF_SHAPE_1
+    if %SHAPE = 2 then goto PLACE_THIEF_SHAPE_2
     }
 if %PIECE = MOONMAGE then
     {
@@ -917,269 +897,267 @@ if %PIECE = MOONMAGE then
     if %SHAPE = 3 then goto PLACE_MOONMAGE_SHAPE_3
     if %SHAPE = 4 then goto PLACE_MOONMAGE_SHAPE_4
     if %SHAPE = 5 then goto PLACE_MOONMAGE_SHAPE_5
-    else goto PLACE_MOONMAGE_SHAPE_6
+    if %SHAPE = 6 then goto PLACE_MOONMAGE_SHAPE_6
     }
 if %PIECE = RANGER then
     {
     if %SHAPE = 1 then goto PLACE_RANGER_SHAPE_1
     if %SHAPE = 2 then goto PLACE_RANGER_SHAPE_2
     if %SHAPE = 3 then goto PLACE_RANGER_SHAPE_3
-    else goto PLACE_RANGER_SHAPE_4
+    if %SHAPE = 4 then goto PLACE_RANGER_SHAPE_4
     }
-# must be Paladin...
-if %SHAPE = 1 then goto PLACE_PALADIN_SHAPE_1
-if %SHAPE = 2 then goto PLACE_PALADIN_SHAPE_2
-if %SHAPE = 3 then goto PLACE_PALADIN_SHAPE_3
-#goto PLACE_PALADIN_SHAPE_4
+if %PIECE = PALADIN then
+    {
+    if %SHAPE = 1 then goto PLACE_PALADIN_SHAPE_1
+    if %SHAPE = 2 then goto PLACE_PALADIN_SHAPE_2
+    if %SHAPE = 3 then goto PLACE_PALADIN_SHAPE_3
+    if %SHAPE = 3 then goto PLACE_PALADIN_SHAPE_4
+    }
+
 
 PLACE_PALADIN_SHAPE_4:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub NEXT_LETTER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-math TILE_NUMBER add 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_NE
+gosub TILE_S
+gosub TILE_SW
+gosub TILE_W
 goto PLACE_PALADIN_CONFIRM
 
 PLACE_PALADIN_SHAPE_3:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_NW
+gosub TILE_S
+gosub TILE_SE
+gosub TILE_E
 goto PLACE_PALADIN_CONFIRM
 
 PLACE_PALADIN_SHAPE_2:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-math TILE_NUMBER subtract 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_NW
+gosub TILE_E
+gosub TILE_SE
+gosub TILE_S
 goto PLACE_PALADIN_CONFIRM
 
 PLACE_PALADIN_SHAPE_1:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-math TILE_NUMBER add 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_NE
+gosub TILE_W
+gosub TILE_SW
+gosub TILE_S
+goto PLACE_PALADIN_CONFIRM
 
 PLACE_PALADIN_CONFIRM:
 gosub CONFIRM_PLACEMENT Paladin
 gosub PRINT_PIECE PALADIN
-eval PALADIN_SPECIAL replacere ("%TILES","^0\|","")
-eval PALADIN_SPECIAL replacere ("%PALADIN_SPECIAL","\|.*","")
-var PALADIN_SPECIAL %SHAPE %PALADIN_SPECIAL
-var PALADIN_SET 1
+math PIECES_SET add 1
 goto REDRAW_DISPLAY
 
 PLACE_WARMAGE:
-var WARMAGE_SPECIAL %TILE_LETTER%TILE_NUMBER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+var WARMAGE_SPECIAL %LETTER%NUMBER
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_N
+gosub TILE_SE
+gosub TILE_SW
+gosub TILE_NW
 gosub CONFIRM_PLACEMENT Warrior Mage
 gosub PRINT_PIECE WARMAGE
-var WARMAGE_SET 1
+math PIECES_SET add 1
 goto REDRAW_DISPLAY
 
 PLACE_EMPATH:
-var EMPATH_SPECIAL %TILE_LETTER%TILE_NUMBER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+var TILES %TILES|%LETTER%NUMBER
+var EMPATH_SPECIAL %LETTER%NUMBER
+gosub TILE_N
+gosub TILE_E
+gosub TILE_S
 gosub CONFIRM_PLACEMENT Empath
 gosub PRINT_PIECE EMPATH
-var EMPATH_SET 1
+math PIECES_SET add 1
 goto REDRAW_DISPLAY
 
 PLACE_RANGER_SHAPE_1:
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_N
+gosub TILE_N
+gosub TILE_N
 gosub NEXT_LETTER
-var RANGER_SPECIAL %TILE_LETTER
-gosub PREV_LETTER
-goto PLACE_RANGER_SHAPE_TALL
+var RANGER_SPECIAL %LETTER
+goto PLACE_RANGER_CONFIRM
 
 PLACE_RANGER_SHAPE_2:
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_N
+gosub TILE_N
+gosub TILE_N
 gosub PREV_LETTER
-var RANGER_SPECIAL %TILE_LETTER
-gosub NEXT_LETTER
-
-PLACE_RANGER_SHAPE_TALL:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+var RANGER_SPECIAL %LETTER
 goto PLACE_RANGER_CONFIRM
 
 PLACE_RANGER_SHAPE_3:
-math TILE_NUMBER subtract 1
-var RANGER_SPECIAL %TILE_NUMBER
-math TILE_NUMBER add 1
-goto PLACE_RANGER_SHAPE_WIDE
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_E
+gosub TILE_E
+gosub TILE_E
+math NUMBER subtract 1
+var RANGER_SPECIAL %NUMBER
+goto PLACE_RANGER_CONFIRM
 
 PLACE_RANGER_SHAPE_4:
-math TILE_NUMBER add 1
-var RANGER_SPECIAL %TILE_NUMBER
-math TILE_NUMBER subtract 1
-
-PLACE_RANGER_SHAPE_WIDE:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_E
+gosub TILE_E
+gosub TILE_E
+math NUMBER add 1
+var RANGER_SPECIAL %NUMBER
+goto PLACE_RANGER_CONFIRM
 
 PLACE_RANGER_CONFIRM:
 gosub CONFIRM_PLACEMENT Ranger
 gosub PRINT_PIECE RANGER
-var RANGER_SET 1
-var RANGER_SPECIAL_CHARGES 2
+math PIECES_SET add 1
+var RANGER_CHARGES 2
 goto REDRAW_DISPLAY
 
 PLACE_MOONMAGE_SHAPE_1:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-math TILE_NUMBER add 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+gosub TILE_SW
+gosub TILE_NE
+gosub TILE_NE
 goto PLACE_MOONMAGE_CONFIRM
 
 PLACE_MOONMAGE_SHAPE_2:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 2
-gosub PREV_LETTER_2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+gosub TILE_SE
+gosub TILE_NW
+gosub TILE_NW
 goto PLACE_MOONMAGE_CONFIRM
 
 PLACE_MOONMAGE_SHAPE_3:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+gosub TILE_SW
+gosub TILE_NE
+gosub TILE_SE
 goto PLACE_MOONMAGE_CONFIRM
 
 PLACE_MOONMAGE_SHAPE_4:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub PREV_LETTER_2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+gosub TILE_NW
+gosub TILE_SE
+gosub TILE_NE
 goto PLACE_MOONMAGE_CONFIRM
 
 PLACE_MOONMAGE_SHAPE_5:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-gosub PREV_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+gosub TILE_SW
+gosub TILE_NE
+gosub TILE_NW
 goto PLACE_MOONMAGE_CONFIRM
 
 PLACE_MOONMAGE_SHAPE_6:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER add 2
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
+gosub TILE_SE
+gosub TILE_NW
+gosub TILE_NE
+goto PLACE_MOONMAGE_CONFIRM
 
 PLACE_MOONMAGE_CONFIRM:
 gosub CONFIRM_PLACEMENT Moon Mage
 gosub PRINT_PIECE MOONMAGE
-var MOONMAGE_SET 1
-var MOONMAGE_SPECIAL 5
+math PIECES_SET add 1
+var MOONMAGE_CHARGES 5
 goto REDRAW_DISPLAY
 
-PLACE_THIEF_WIDE:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-gosub NEXT_LETTER
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-var THIEF_SPECIAL %TILE_LETTER
+PLACE_THIEF_SHAPE_1:
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_N
+var THIEF_SPECIAL %NUMBER
 goto PLACE_THIEF_CONFIRM
 
-PLACE_THIEF_TALL:
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-math TILE_NUMBER subtract 1
-var TILES %TILES|%TILE_LETTER%TILE_NUMBER
-var THIEF_SPECIAL %TILE_NUMBER
+PLACE_THIEF_SHAPE_2:
+var TILES %TILES|%LETTER%NUMBER
+gosub TILE_E
+var THIEF_SPECIAL %LETTER
+goto PLACE_THIEF_CONFIRM
 
 PLACE_THIEF_CONFIRM:
 gosub CONFIRM_PLACEMENT Thief
 gosub PRINT_PIECE THIEF
-var THIEF_SET 1
+math PIECES_SET add 1
 goto REDRAW_DISPLAY
 
-PLACE_TRAP:
+PLACE_TRAP1:
 var %TILE %TRAP
-var TRAP_SET 1
+math PIECES_SET add 1
 goto REDRAW_DISPLAY
 
 PLACE_TRAP2:
 var %TILE %TRAP
-var TRAP2_SET 1
-var LOOP 1
-gosub SETVARS_CLEAR
+math PIECES_SET add 1
+gosub SETVARS CLEAR
 goto REDRAW_DISPLAY
 
+TILE_N2:
+math NUMBER subtract 1
+
+TILE_N:
+math NUMBER subtract 1
+var TILES %TILES|%LETTER%NUMBER
+return
+
+TILE_NE:
+math NUMBER subtract 1
+gosub NEXT_LETTER
+var TILES %TILES|%LETTER%NUMBER
+return
+
+TILE_E2:
+gosub NEXT_LETTER
+
+TILE_E:
+gosub NEXT_LETTER
+var TILES %TILES|%LETTER%NUMBER
+return
+
+TILE_SE:
+math NUMBER add 1
+gosub NEXT_LETTER
+var TILES %TILES|%LETTER%NUMBER
+return
+
+TILE_S2:
+math NUMBER add 1
+
+TILE_S:
+math NUMBER add 1
+var TILES %TILES|%LETTER%NUMBER
+return
+
+TILE_SW:
+math NUMBER add 1
+gosub PREV_LETTER
+var TILES %TILES|%LETTER%NUMBER
+return
+
+TILE_W:
+gosub PREV_LETTER
+var TILES %TILES|%LETTER%NUMBER
+return
+
+TILE_NW:
+math NUMBER subtract 1
+gosub PREV_LETTER
+var TILES %TILES|%LETTER%NUMBER
+return
+
 PREV_LETTER_2:
-eval TILE_LETTER replacere ("0|%COLUMNS","\|%TILE_LETTER.*","")
-eval TILE_LETTER replacere ("%TILE_LETTER","\|[A-Z]$","")
-eval TILE_LETTER replacere ("%TILE_LETTER","^.*\|","")
+eval LETTER replacere ("0|%ALPHABET","\|%LETTER.*","")
+eval LETTER replacere ("%LETTER","\|[A-Z]$","")
+eval LETTER replacere ("%LETTER","^.*\|","")
 return
 
 PREV_LETTER:
-eval TILE_LETTER replacere ("0|%COLUMNS","\|%TILE_LETTER.*","")
-eval TILE_LETTER replacere ("%TILE_LETTER",".*\|","")
+eval LETTER replacere ("0|%ALPHABET","\|%LETTER.*","")
+eval LETTER replacere ("%LETTER",".*\|","")
 return
 
 NEXT_LETTER:
-eval TILE_LETTER replacere ("%COLUMNS|0",".*%TILE_LETTER\|","")
-eval TILE_LETTER replacere ("%TILE_LETTER","\|.*","")
+eval LETTER replacere ("%ALPHABET|0",".*%LETTER\|","")
+eval LETTER replacere ("%LETTER","\|.*","")
 return
 
 CONFIRM_PLACEMENT:
@@ -1188,13 +1166,14 @@ eval LOOP count ("%TILES","|")
 
 CONFIRM_PLACEMENT_LOOP:
 eval TILE element ("%TILES","%LOOP")
-if !matchre ("%%TILE","%TILE_BUTTON") then
+var TYPE %%TILE
+if !matchre ("%TYPE","%TILE_BUTTON") then
     {
     put #echo >%WINDOW mono "Cannot place your %ECHO_PIECE there!";#echo >%WINDOW mono "Try another spot or orientation."
     var TILES 0
     var TILE %PLACE_TILE
-    eval TILE_LETTER replacere ("%TILE","\d+","")
-    eval TILE_NUMBER replacere ("%TILE","[A-Z]","")
+    eval LETTER replacere ("%TILE","\d+","")
+    eval NUMBER replacere ("%TILE","[A-Z]","")
     goto GAME_LOOP
     }
 math LOOP subtract 1
@@ -1216,6 +1195,7 @@ goto PRINT_PIECE_LOOP
 
 
 DISPLAY:
+if %DEBUG = 1 then debug 0
 put #window show %WINDOW
 put #clear %WINDOW
 put #echo >%WINDOW
@@ -1235,7 +1215,7 @@ var COL_LOOP 0
 var ECHO
 
 ECHO_LOOP:
-eval COL element ("%COLUMNS","%COL_LOOP")
+eval COL element ("%ALPHABET","%COL_LOOP")
 math COL_LOOP add 1
 if %COL_LOOP > %GRID_MAX then
     {
@@ -1256,7 +1236,7 @@ if %COL_LOOP > %GRID_MAX then
             else
                 {
                 if (("%M" != "0") && ("%MOONMAGE_SPECIAL" != "0")) then put #echo >%WINDOW mono "   Moon Mage: {Cast Locate:#parse MOONMAGE_LOCATE}"
-                }                
+                }
             put #echo >%WINDOW mono "   HP: P-%P   W-%W   E-%E   R-%R   M-%M   T-%T"
             put #echo >%WINDOW mono "   Turns: %MYTURN               %MEFIRST"
             put #echo >%WINDOW
@@ -1280,7 +1260,7 @@ var COL_LOOP 0
 var ECHO
 
 ECHO_ENEMY_LOOP:
-eval COL element ("%COLUMNS","%COL_LOOP")
+eval COL element ("%ALPHABET","%COL_LOOP")
 math COL_LOOP add 1
 if %COL_LOOP > %GRID_MAX then
     {
@@ -1306,18 +1286,25 @@ goto ECHO_ENEMY_LOOP
 ######## SAVE\LOAD #########
 
 
+SAVE_GAME_FORCED_BY_ENEMY:
+if %LAST_UPDATE = Saving then goto GAME_LOOP
+
 SAVE_GAME_ENEMY:
 #eval SAVE replacere ("%PALADIN_SPECIAL","\|","-")
 # Insert %SAVE before %WARMAGE_SPECIAL when using Paladin Special Version 1
-var SAVE %RIGHT_EDGE|%GRID_MAX|%P|%W|%E|%R|%M|%T|%EP|%EW|%EE|%ER|%EM|%ET|%WARMAGE_SPECIAL|%EMPATH_SPECIAL|%RANGER_SPECIAL|%RANGER_SPECIAL_CHARGES|%MOONMAGE_SPECIAL|%THIEF_SPECIAL|%MYTURN|%ENEMYTURN|%MEFIRST|%ENFIRST
+var SAVE %RIGHT_EDGE|%GRID_MAX|%P|%W|%E|%R|%M|%T|%EP|%EW|%EE|%ER|%EM|%ET|%WARMAGE_SPECIAL|%EMPATH_SPECIAL|%RANGER_SPECIAL|%RANGER_CHARGES|%MOONMAGE_CHARGES|%THIEF_SPECIAL|%MYTURN|%ENEMYTURN|%MEFIRST|%ENFIRST
 var ECHO_2 Game versus %ENEMY saved!
 var FILL %ENEMY
+var LAST_UPDATE Saving
+var WHISPER Saving!
+gosub WHISPER_RETURN
 var LOOP 1
+if %DEBUG = 1 then debug 0
 goto SAVE_GAME_OUTER_LOOP
 
 SAVE_GAME_PRESET:
 #eval SAVE replacere ("%PALADIN_SPECIAL","\|","-")
-var SAVE %RIGHT_EDGE|%GRID_MAX|%PALADIN_SET|%WARMAGE_SET|%EMPATH_SET|%RANGER_SET|%MOONMAGE_SET|%TRAP_SET|%THIEF_SET|%TRAP2_SET|%WARMAGE_SPECIAL|%EMPATH_SPECIAL|%RANGER_SPECIAL|%RANGER_SPECIAL_CHARGES|%MOONMAGE_SPECIAL|%THIEF_SPECIAL
+var SAVE %RIGHT_EDGE|%GRID_MAX|%PIECES_SET|%WARMAGE_SPECIAL|%EMPATH_SPECIAL|%RANGER_SPECIAL|%RANGER_CHARGES|%MOONMAGE_CHARGES|%THIEF_SPECIAL
 var ECHO_2 Preset game saved!
 var FILL Preset
 var LOOP 1
@@ -1326,7 +1313,7 @@ SAVE_GAME_OUTER_LOOP:
 var COL_LOOP 0
 
 SAVE_GAME_INNER_LOOP:
-eval COL element ("%COLUMNS","%COL_LOOP")
+eval COL element ("%ALPHABET","%COL_LOOP")
 math COL_LOOP add 1
 if %COL_LOOP > %GRID_MAX then
     {
@@ -1354,8 +1341,7 @@ matchre REDRAW_DISPLAY ^NO_LOAD_GAME
 matchwait
 
 LOAD_GAME_ENEMY:
-var LOOP 1
-gosub SETVARS_LINKS
+gosub SETVARS LINKS
 if !def(BattleSiege_%ENEMY) then
     {
     var ECHO_2 There is no saved game with %ENEMY!
@@ -1380,8 +1366,8 @@ eval ET element ("%LOAD","13")
 eval WARMAGE_SPECIAL element ("%LOAD","14")
 eval EMPATH_SPECIAL element ("%LOAD","15")
 eval RANGER_SPECIAL element ("%LOAD","16")
-eval RANGER_SPECIAL_CHARGES element ("%LOAD","17")
-eval MOONMAGE_SPECIAL element ("%LOAD","18")
+eval RANGER_CHARGES element ("%LOAD","17")
+eval MOONMAGE_CHARGES element ("%LOAD","18")
 eval THIEF_SPECIAL element ("%LOAD","19")
 eval MYTURN element ("%LOAD","20")
 eval ENEMYTURN element ("%LOAD","21")
@@ -1392,143 +1378,147 @@ var LOOP 23
 goto LOAD_GAME_LOOP
 
 LOAD_GAME_PRESET:
-var LOOP 1
-gosub SETVARS_LINKS
+gosub SETVARS LINKS
 var LOAD $BattleSiege_Preset
 var ECHO_2 Preset game loaded!
 var ENEMY 0
 eval RIGHT_EDGE element ("%LOAD","0")
 eval GRID_MAX element ("%LOAD","1")
-eval PALADIN_SET element ("%LOAD","2")
-eval WARMAGE_SET element ("%LOAD","3")
-eval EMPATH_SET element ("%LOAD","4")
-eval RANGER_SET element ("%LOAD","5")
-eval MOONMAGE_SET element ("%LOAD","6")
-eval THIEF_SET element ("%LOAD","7")
-eval TRAP_SET element ("%LOAD","8")
-eval TRAP2_SET element ("%LOAD","9")
-eval WARMAGE_SPECIAL element ("%LOAD","14")
-eval EMPATH_SPECIAL element ("%LOAD","11")
-eval RANGER_SPECIAL element ("%LOAD","12")
-eval RANGER_SPECIAL_CHARGES element ("%LOAD","13")
-eval MOONMAGE_SPECIAL element ("%LOAD","14")
-eval THIEF_SPECIAL element ("%LOAD","15")
+eval PIECES_SET element ("%LOAD","2")
+eval WARMAGE_SPECIAL element ("%LOAD","3")
+eval EMPATH_SPECIAL element ("%LOAD","4")
+eval RANGER_SPECIAL element ("%LOAD","5")
+eval RANGER_CHARGES element ("%LOAD","6")
+eval MOONMAGE_CHARGES element ("%LOAD","7")
+eval THIEF_SPECIAL element ("%LOAD","8")
 eval COL_LOOP count ("%LOAD","|")
-if %COL_LOOP = 15 then goto REDRAW_DISPLAY
-var LOOP 15
+if %COL_LOOP = 8 then goto REDRAW_DISPLAY
+var LOOP 8
 
 LOAD_GAME_LOOP:
+if %DEBUG = 1 then debug 0
 eval TILE element ("%LOAD","%LOOP")
 eval FILL replacere ("%TILE","^.*\:","")
 eval TILE replacere ("%TILE","\:.*","")
 var %TILE %FILL
 math LOOP add 1
 if %LOOP <= %COL_LOOP then goto LOAD_GAME_LOOP
-var LOOP 1
-gosub SETVARS_CLEAR
+gosub SETVARS CLEAR
 if %ENEMY = 0 then goto REDRAW_DISPLAY
+if %DEBUG = 1 then debug 10
 goto START_GAME
 
 
 ######## SETVARS ##########
 
 
-SETVARS_INIT:
-var COL_LOOP 0
-
-SETVARS_INIT_LOOP:
-eval COL element ("%COLUMNS","%COL_LOOP")
-math COL_LOOP add 1
-if %COL_LOOP > %GRID_MAX then
-    {
-    math LOOP add 1
-    if %LOOP > %GRID_MAX then return
-    goto SETVARS_INIT
-    }
-var %COL%LOOP 0
-goto SETVARS_INIT_LOOP
-
-SETVARS_FIND:
-var COL_LOOP 0
-
-SETVARS_FIND_LOOP:
-eval COL element ("%COLUMNS","%COL_LOOP")
-math COL_LOOP add 1
-if %COL_LOOP > %GRID_MAX then
-    {
-    math LOOP add 1
-    if %LOOP > %GRID_MAX then return
-    goto SETVARS_FIND
-    }
-if matchre ("%%COL%LOOP","%MOONMAGE") then var ECHO_TILES %ECHO_TILES|%COL%LOOP:%MOONMAGE
-goto SETVARS_FIND_LOOP
-
 COUNT_TILES_REMAINING:
 var TILES 0
+var NUMBER 1
+if %DEBUG = 1 then debug 0
 
 SETVARS_COUNT:
-var COL_LOOP 0
-
+var COLUMN 0
 SETVARS_COUNT_LOOP:
-eval COL element ("%COLUMNS","%COL_LOOP")
-math COL_LOOP add 1
-if %COL_LOOP > %GRID_MAX then
+eval LETTER element ("%ALPHABET","%COLUMN")
+math COLUMN add 1
+if %COLUMN > %GRID_MAX then
     {
-    math LOOP add 1
-    if %LOOP > %GRID_MAX then return
+    math NUMBER add 1
+    if %NUMBER > %GRID_MAX then return
     goto SETVARS_COUNT
     }
-if matchre ("%%COL%LOOP","%TILE_BUTTON") then math TILES add 1
+if matchre ("%E%LETTER%NUMBER","%TILE_BUTTON") then math TILES add 1
 goto SETVARS_COUNT_LOOP
 
-SETVARS_CLEAR:
-var COL_LOOP 0
+SETVARS:
+if %DEBUG = 1 then debug 0
+var NUMBER 1
+goto SETVARS_$0
 
-SETVARS_CLEAR_LOOP:
-eval COL element ("%COLUMNS","%COL_LOOP")
-math COL_LOOP add 1
-if %COL_LOOP > %GRID_MAX then
+SETVARS_FIND:
+var COLUMN 0
+SETVARS_FIND_LOOP:
+eval LETTER element ("%ALPHABET","%COLUMN")
+math COLUMN add 1
+if %COLUMN > %GRID_MAX then
     {
-    math LOOP add 1
-    if %LOOP > %GRID_MAX then return
+    math NUMBER add 1
+    if %NUMBER > %GRID_MAX then return
+    goto SETVARS_FIND
+    }
+if matchre ("%%LETTER%NUMBER","%MOONMAGE") then var ECHO_TILES %ECHO_TILES|%LETTER%NUMBER:%MOONMAGE
+goto SETVARS_FIND_LOOP
+
+SETVARS_CLEAR:
+var COLUMN 0
+SETVARS_CLEAR_LOOP:
+eval LETTER element ("%ALPHABET","%COLUMN")
+math COLUMN add 1
+if %COLUMN > %GRID_MAX then
+    {
+    math NUMBER add 1
+    if %NUMBER > %GRID_MAX then return
     goto SETVARS_CLEAR
     }
-if matchre ("%%COL%LOOP","%TILE_BUTTON") then var %COL%LOOP %BE
+if matchre ("%%LETTER%NUMBER","%TILE_BUTTON") then var %LETTER%NUMBER %BE
 goto SETVARS_CLEAR_LOOP
 
 SETVARS_LINKS:
-var COL_LOOP 0
-
+var COLUMN 0
 SETVARS_LINKS_LOOP:
-eval COL element ("%COLUMNS","%COL_LOOP")
-math COL_LOOP add 1
-if %COL_LOOP > %GRID_MAX then
+eval LETTER element ("%ALPHABET","%COLUMN")
+math COLUMN add 1
+if %COLUMN > %GRID_MAX then
     {
-    math LOOP add 1
-    if %LOOP > %GRID_MAX then return
+    math NUMBER add 1
+    if %NUMBER > %GRID_MAX then return
     goto SETVARS_LINKS
     }
-var %COL%LOOP {%TILE_BUTTON:#parse SELECT_%COL%LOOP}
-var E%COL%LOOP {%TILE_BUTTON:#parse SELECT_%COL%LOOP}
+var %LETTER%NUMBER {%TILE_BUTTON:#parse SELECT_%LETTER%NUMBER}
+var E%LETTER%NUMBER {%TILE_BUTTON:#parse SELECT_%LETTER%NUMBER}
 goto SETVARS_LINKS_LOOP
 
 
 ########################
 
-
-YOU_WIN:
-put #echo >%WINDOW lime mono "You won! A strategic mastermind!"
-put #echo >%WINDOW lime mono "Total Turns: %MYTURN! - %ENEMY's Total Turns: %ENEMYTURN!"
-var GAME_WON 1
+END_CONDITIONS:
+if ("%P|%W|%E|%R|%M|%T" = "0|0|0|0|0|0") then
+    {
+    var ECHO_2 You lost! But the real treasure is the mana traps we set off along the way!
+    var GAME_WON 2
+    }
+if ("%EP|%EW|%EE|%ER|%EM|%ET" = "0|0|0|0|0|0") then
+    {
+    var ECHO_2 You won! You're a stategic mastermind!
+    var GAME_WON 1
+    }
+if %GAME_WON != 0 then
+    {
+    gosub DISPLAY
+    put #echo >%WINDOW mono "%ECHO_2"
+    put #echo >%WINDOW lime mono "Total Turns: %MYTURN! - %ENEMY's Total Turns: %ENEMYTURN!"
+    put #echo >%WINDOW
+    random 1 6
+    gosub QUOTES
+    put #echo >%WINDOW '"%QUOTE_%r"'
+    if %GAG_WHISPERS = 1 then
+        {
+        put #ungag %OUTPUT_GAG
+        put #ungag %INPUT_GAG
+        }
+    put #class BattleSiege false
+    exit
+    }
 return
 
-YOU_LOSE:
-put #echo >%WINDOW pink mono "You lost! But the real treasure is..."
-put #echo >%WINDOW pink mono "...the mana traps we set off along the way!"
-put #echo >%WINDOW lime mono "Total Turns: %MYTURN! - %ENEMY's Total Turns: %ENEMYTURN!"
-var GAME_WON 2
-return
-
+QUOTES:
+var QUOTE_1 Every day, once a day, give yourself a present. Don't plan it. Don't wait for it. Just let it happen. It could be a new shirt at the men's store, a catnap in your office chair, or two cups of good, hot black coffee.
+var QUOTE_2 Everything will be okay in the end. If it's not okay, it's not the end.
+var QUOTE_3 Now you listen to me. While I will admit to a certain cynicism, the fact is that I am a naysayer and hatchetman in the fight against violence. I pride myself in taking a punch and I'll gladly take another because I choose to live my life in the company of Gandhi and King. My concerns are global. I reject absolutely revenge, aggression, and retaliation. The foundation of such a method... is love. I love you, Sheriff Truman.
+var QUOTE_4 If any god had anything to do with it, then that god shouldn't be a god. And if any god could have stopped it, then that god shouldn't be a god.
+var QUOTE_5 Let's go fill Moominvalley with crime, c'mon!
+var QUOTE_6 Hey, hey, hey, rainy face! Hey, proud warrior. Let the sun come out, you big bad G.I. Joe. You know, kitten, we all have permission to make mistakes. It's called learning.
 
 PINK_COLORS:
  var CL1 #ff8fbe
@@ -1679,3 +1669,7 @@ var CL25 %DEFAULT_COLOR
 var CL26 %DEFAULT_COLOR
 var CL27 %DEFAULT_COLOR
 return
+
+LOGIC_ERROR:
+put #echo >Log pink BattleSiege: This text should never display. The script is broken and will now close.
+exit
