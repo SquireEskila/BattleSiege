@@ -1,7 +1,5 @@
 ### BattleSiege! Version 1.2 Coded by Eskila and Cryle ###
 
-# TO DO - make pieces an array and counter so it's easier for players to pick and choose which ones to play with
-
 # Window Title
 var WINDOW BattleSiege!
 # Compact Display = 0 or 1
@@ -56,7 +54,6 @@ var DEBUG 0
 ##################
 
 put #class BattleSiege true
-var BattleSiege NewGame
 var ALPHABET A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z
 eval RIGHT_EDGE element ("0|%ALPHABET","%GRID_MAX")
 eval BC element ("%ALPHABET","%GRID_MAX")
@@ -264,6 +261,13 @@ if %SPECIAL_HIT = Backtrace then
     var E%TILE {%FILL:#parse SELECT_%TILE}
     goto REDRAW_DISPLAY
     }
+if %SPECIAL_HIT = Empath then
+    {
+    var ECHO_2 Your Empath reaches out to sense nearby dangers!
+    var EMPATH_SPECIAL 0
+    var E%TILE {%FILL:#parse SELECT_%TILE}
+    goto REDRAW_DISPLAY
+    }    
 var E%TILE %BH
 if %FILL = PROTECTED then var E%TILE {%PROTECTED:#parse SELECT_%TILE}
 if %FILL = MISS then var E%TILE %BB
@@ -290,7 +294,7 @@ if %SPECIAL_HIT = MoonMage then
     eval ECHO_2 element ("%INFO","2")
     eval ECHO_2 replacere ("%ECHO_2","\:.*","")
     var ECHO_2 Your Moon Mage casts locate on tiles %ECHO_1 and %ECHO_2!
-    math MOONMAGE_SPECIAL subtract 1
+    math MOONMAGE_CHARGES subtract 1
     }
 if %SPECIAL_HIT = Backtrace then
     {
@@ -396,7 +400,7 @@ gosub COUNT_TILES_REMAINING
 if %TILES < 2 then
     {
     var ECHO_2 Why bother...? Also, your Moon Mage runs out of mana now.
-    var MOONMAGE_SPECIAL 0
+    var MOONMAGE_CHARGES 0
     goto REDRAW_DISPLAY
     }
 var ECHO_TILES 0
@@ -1230,12 +1234,12 @@ if %COL_LOOP > %GRID_MAX then
             {
             if (("%E" != "0") && ("%EMPATH_SPECIAL" != "0")) then
                 {
-                if (("%M" != "0") && ("%MOONMAGE_SPECIAL" != "0")) then put #echo >%WINDOW mono "   Empath: {Sense Life:#parse EMPATH_SPECIAL}  Moon Mage: {Locate:#parse MOONMAGE_LOCATE}"
+                if (("%M" != "0") && ("%MOONMAGE_CHARGES" != "0")) then put #echo >%WINDOW mono "   Empath: {Sense Life:#parse EMPATH_SPECIAL}  Moon Mage: {Locate:#parse MOONMAGE_LOCATE}"
                 else put #echo >%WINDOW mono "   Empath: {Sense Life:#parse EMPATH_SPECIAL}"
                 }
             else
                 {
-                if (("%M" != "0") && ("%MOONMAGE_SPECIAL" != "0")) then put #echo >%WINDOW mono "   Moon Mage: {Cast Locate:#parse MOONMAGE_LOCATE}"
+                if (("%M" != "0") && ("%MOONMAGE_CHARGES" != "0")) then put #echo >%WINDOW mono "   Moon Mage: {Cast Locate:#parse MOONMAGE_LOCATE}"
                 }
             put #echo >%WINDOW mono "   HP: P-%P   W-%W   E-%E   R-%R   M-%M   T-%T"
             put #echo >%WINDOW mono "   Turns: %MYTURN               %MEFIRST"
