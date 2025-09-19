@@ -701,7 +701,6 @@ goto FIRE_ALL_ARBALESTS_LOOP
 
 ######################
 
-
 CONSTRUCT:
 if !matchre ("%%K_CARDS","\b(C1)\b") then goto ERROR_INVALID_CARD
 gosub FIND_TILE
@@ -719,8 +718,6 @@ var BACK %ROW%COL
 eval CHECK element ("%LINE_%ROW","%COL_2")
 if ("%CHECK" != "::") then
     {
-    # possible bug; would this build both tiles of an arbalest on the same spot? fix would be changing the math to + or - 2?
-    # So far seems to work though
     if %K = 1 then evalmath COL_2 (%COL - 1)
     if %K = 2 then evalmath COL_2 (%COL + 1)
     eval CHECK element ("%LINE_%ROW","%COL_2")
@@ -832,7 +829,7 @@ gosub FIND_TILE
 eval ROW replacere ("%TILE_1","\d+","")
 eval COL replacere ("%TILE_1","[A-G]","")
 if %K = 2 then gosub COL_OFFSET 1
-#if ("%PLAYER_WEAKNESS" = "0") then goto ERROR_NO_FOX
+#if ("%PLAYER_WEAKNESS" = "0") then goto ERROR_NO_FIX
 #if !matchre ("%PLAYER_WEAKNESS","%TILE_1") then goto ERROR_NO_FIX
 # Little bit redundant there...?
 eval CHECK element ("%LINE_%ROW","%COL")
@@ -1023,6 +1020,12 @@ if %MAX = 12 then
 GIVE_CARDS_LOOP:
 eval CARD element ("%DECK","0")
 eval DECK replacere ("%DECK","^\d+\|","")
+if %CARD = 0 then
+    {
+    # What will this break?
+    gosub SHUFFLE_DECK
+    goto GIVE_CARDS_LOOP
+    }
 var CARDS %CARDS|C%CARD
 math LOOP subtract 1
 if %LOOP = 0 then
@@ -1149,7 +1152,6 @@ var R5 Lastly, you can just TAP me or ask me to REMIND you of your cards, or say
 var RECITE %R1\;   \;%R3\;%R4\;%R5
 goto DO_RECITE
 
-
 CARD_RULES:
 var R1 The card types! (1/2) - Building, Construction, and Debris
 var R2
@@ -1168,8 +1170,6 @@ var R5 * Fire All Arbalests - Fire all your arbalests in play - Keyword: "Fire" 
 var R6 * Swab the Deck - Discard all cards and draw a new hand - Keywords: "Swab"!
 var RECITE %R1\;  \;%R3\;%R4\;%R5\;%R6
 goto DO_RECITE
-
-
 
 RECITE_HITS:
 var RECITE %NEXTLINE\;%R1
@@ -1192,7 +1192,6 @@ var R2 * 1: 2: 3: 4: 5: 6: * (%1_HEALTH %) --- (%2_HEALTH %) * 6: 5: 4: 3: 2: 1:
 eval R2 replacere ("%R2","Z"," ")
 eval 1_HEALTH replacere ("%1_HEALTH","^Z","")
 eval 2_HEALTH replacere ("%2_HEALTH","^Z","")
-# to do... somehow? If an arbalest has only 1 hit left in it, then change the # to +
 gosub SILLY_THING A 3
 gosub SILLY_THING B 4
 gosub SILLY_THING C 5
@@ -1200,13 +1199,6 @@ gosub SILLY_THING D 6
 gosub SILLY_THING E 7
 gosub SILLY_THING F 8
 gosub SILLY_THING G 9
-#eval R3 replacere ("%LINE_A","\=\|\=","=#=")
-#eval R4 replacere ("%LINE_B","\=\|\=","=#=")
-#eval R5 replacere ("%LINE_C","\=\|\=","=#=")
-#eval R6 replacere ("%LINE_D","\=\|\=","=#=")
-#eval R7 replacere ("%LINE_E","\=\|\=","=#=")
-#eval R8 replacere ("%LINE_F","\=\|\=","=#=")
-#eval R9 replacere ("%LINE_G","\=\|\=","=#=")
 eval R3 replacere ("%R3","\|"," ")
 eval R4 replacere ("%R4","\|"," ")
 eval R5 replacere ("%R5","\|"," ")
@@ -1230,7 +1222,6 @@ if ("%WINDOW" != "0") then
     put #echo >%WINDOW #00abfc mono "%R9"
     put #echo >%WINDOW #00a4fb mono " * * * * {PASS TURN:#parse PASS} * {RULES:#parse RULES} * {CARD TYPES:#parse TYPES} * {RECITE BOARD:#parse BOARD} * * * * "
     gosub STUPID_THING
-    #put #echo >%WINDOW #009ef7 mono "      * * {Remind %N1 Cards:#parse REMIND %N1} * {Remind %N2 Cards:#parse REMIND %N2} * *"
     }
 
 DO_RECITE:
